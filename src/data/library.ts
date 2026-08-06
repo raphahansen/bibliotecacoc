@@ -95,3 +95,69 @@ export const topRated = make([
   ["Turma da Mônica: Laços", "Mauricio de Sousa", "Quadrinhos", 4.8, 2013],
   ["O Alienista", "Machado de Assis", "Contos", 4.8, 1882],
 ]);
+
+export const reviews = [
+  {
+    id: "r1",
+    book: "Drácula",
+    author: "Bram Stoker",
+    reader: "Marina S. · 9º ano",
+    rating: 5,
+    text: "Amei a leitura, fiquei intrigada em como a história consegue prender. Não é à toa ser um grande clássico!",
+    available: true,
+  },
+  {
+    id: "r2",
+    book: "Torto Arado",
+    author: "Itamar Vieira Junior",
+    reader: "Pedro H. · 2ª série",
+    rating: 5,
+    text: "Difícil largar o livro. As irmãs ficam com você por muito tempo depois da última página.",
+    available: false,
+  },
+  {
+    id: "r3",
+    book: "Quarto de Despejo",
+    author: "Carolina Maria de Jesus",
+    reader: "Bianca L. · 1ª série",
+    rating: 4,
+    text: "Um diário que dói e ensina. Todo mundo da escola deveria ler pelo menos uma vez.",
+    available: true,
+  },
+] as const;
+
+export const readerOfMonth = {
+  name: "Helena Duarte",
+  grade: "8º ano B",
+  month: "Maio",
+  booksRead: 2,
+  favorite: "O Diário de Anne Frank",
+  quote: "Comecei a ler no intervalo e agora não consigo mais parar.",
+};
+
+export const agenda = [
+  {
+    month: "Agosto",
+    title: "Divulgação do novo site",
+    description: "Lançamento do site da biblioteca nas redes sociais do COC Novomundo.",
+    icon: "Megaphone",
+  },
+  {
+    month: "Agosto",
+    title: "Feira de troca",
+    description: "Alunos e funcionários trocam livros no espaço colorido da sala de leitura.",
+    icon: "Repeat2",
+  },
+  {
+    month: "Setembro",
+    title: "Sarau de poesia",
+    description: "Leituras e apresentações abertas à comunidade escolar na sala de leitura.",
+    icon: "Mic",
+  },
+];
+
+export const adminHighlights = [
+  { title: "Catalogação", description: "Entrada e saída de títulos sempre registrada no site.", icon: "Library" },
+  { title: "Empréstimos e devoluções", description: "Controle digital com prazos e histórico por aluno.", icon: "ArrowLeftRight" },
+  { title: "Cadastro atualizado", description: "Dados de alunos e funcionários conferidos e sempre em dia.", icon: "Users" },
+];
