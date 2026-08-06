@@ -9,7 +9,12 @@ export function SiteFooter() {
             <span className="grid size-10 place-items-center rounded-2xl bg-[image:var(--gradient-gold)] text-accent-foreground">
               <BookOpenText className="size-5" />
             </span>
-            <span className="font-display text-lg">Biblioteca COC Novomundo</span>
+            <span className="leading-tight">
+              <span className="block font-display text-lg">Biblioteca COC Novomundo</span>
+              <span className="block text-[0.7rem] uppercase tracking-[0.18em] text-primary-foreground/70">
+                Profª Vera Massis
+              </span>
+            </span>
           </div>
           <p className="mt-4 max-w-xs text-sm text-primary-foreground/70">
             Um espaço de leitura, pesquisa e encontro para toda a comunidade escolar.
