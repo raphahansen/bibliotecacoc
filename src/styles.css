@@ -109,14 +109,14 @@
 
   --gradient-hero: linear-gradient(
     115deg,
-    oklch(0.24 0.08 262 / 0.95) 0%,
-    oklch(0.32 0.098 262 / 0.82) 45%,
-    oklch(0.4 0.1 258 / 0.55) 100%
+    oklch(0.3 0.06 40 / 0.95) 0%,
+    oklch(0.42 0.075 42 / 0.82) 45%,
+    oklch(0.52 0.075 45 / 0.5) 100%
   );
   --gradient-gold: linear-gradient(100deg, var(--gold-soft), var(--gold));
-  --shadow-soft: 0 2px 10px -4px oklch(0.32 0.098 262 / 0.16);
-  --shadow-card: 0 14px 36px -18px oklch(0.24 0.08 262 / 0.35);
-  --shadow-lift: 0 24px 50px -22px oklch(0.24 0.08 262 / 0.45);
+  --shadow-soft: 0 2px 10px -4px oklch(0.32 0.06 40 / 0.18);
+  --shadow-card: 0 14px 36px -18px oklch(0.3 0.06 40 / 0.35);
+  --shadow-lift: 0 24px 50px -22px oklch(0.3 0.06 40 / 0.45);
 }
 
 
