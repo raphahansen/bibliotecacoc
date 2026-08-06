@@ -21,7 +21,7 @@ export function SiteHeader() {
           </span>
           <span className="min-w-0 leading-tight">
             <span className="block truncate font-display text-base font-semibold text-primary">
-              Biblioteca COC
+              Biblioteca COC Novomundo
             </span>
             <span className="block truncate text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
               Profª Vera Massis
