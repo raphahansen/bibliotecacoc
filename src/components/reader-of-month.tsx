@@ -1,0 +1,71 @@
+import { Award, Star, BookOpen, Instagram } from "lucide-react";
+import { readerOfMonth } from "@/data/library";
+
+export function ReaderOfMonth() {
+  return (
+    <section id="leitor-do-mes" className="bg-secondary/60 py-16">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent-foreground/70">
+            Reconhecimento
+          </p>
+          <h2 className="mt-2 font-display text-3xl text-primary sm:text-4xl">
+            Leitor do mês
+          </h2>
+          <p className="mt-3 max-w-xl text-muted-foreground">
+            O aluno que mais ler no mês tem a sua foto publicada nas redes sociais
+            da escola, incentivando mais estudantes a mergulharem na leitura.
+          </p>
+          <a
+            href="#"
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.03]"
+          >
+            <Instagram className="size-4" /> Ver no perfil da escola
+          </a>
+        </div>
+
+        <article className="relative overflow-hidden rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-lift)]">
+          <span className="absolute right-6 top-6 grid size-12 place-items-center rounded-full bg-[image:var(--gradient-gold)] text-accent-foreground">
+            <Award className="size-6" />
+          </span>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {readerOfMonth.month}
+          </p>
+          <h3 className="mt-1 font-display text-2xl text-primary">
+            {readerOfMonth.name}
+          </h3>
+          <p className="text-sm text-muted-foreground">{readerOfMonth.grade}</p>
+
+          <div className="mt-4 flex gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} className="size-4 fill-gold text-gold" />
+            ))}
+          </div>
+
+          <p className="mt-4 text-sm italic text-foreground/85">
+            “{readerOfMonth.quote}”
+          </p>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-secondary/70 p-4">
+              <p className="font-display text-2xl text-primary">
+                {readerOfMonth.booksRead}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                livros lidos em {readerOfMonth.month}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-secondary/70 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <BookOpen className="size-4" /> Favorito
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {readerOfMonth.favorite}
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
