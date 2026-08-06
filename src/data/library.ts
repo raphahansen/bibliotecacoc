@@ -60,7 +60,7 @@ const make = (
     category,
     rating,
     year,
-    tone: tones[i % tones.length],
+    tone: tones[i % tones.length]!,
   }));
 
 export const featured = make([
