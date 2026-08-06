@@ -1,21 +1,25 @@
-import { Clock, Mail, MapPin, Phone, BookOpenText, Instagram, Facebook, Youtube } from "lucide-react";
+import { Clock, Mail, MapPin, Phone, Instagram, Facebook, Youtube } from "lucide-react";
+import logo from "@/assets/logo-novomundo-coc.png.asset.json";
 
 export function SiteFooter() {
   return (
     <footer className="mt-8 bg-primary-deep text-primary-foreground">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-4 lg:px-8">
         <div>
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-2xl bg-[image:var(--gradient-gold)] text-accent-foreground">
-              <BookOpenText className="size-5" />
-            </span>
-            <span className="leading-tight">
-              <span className="block font-display text-lg">Biblioteca COC Novomundo</span>
-              <span className="block text-[0.7rem] uppercase tracking-[0.18em] text-primary-foreground/70">
-                Profª Vera Massis
-              </span>
+          <div className="inline-flex items-center rounded-2xl bg-background px-4 py-3">
+            <img
+              src={logo.url}
+              alt="Colégio Novomundo · Plataforma de Educação COC"
+              className="h-9 w-auto"
+            />
+          </div>
+          <div className="mt-4 leading-tight">
+            <span className="block font-display text-lg">Biblioteca COC Novomundo</span>
+            <span className="block text-[0.7rem] uppercase tracking-[0.18em] text-primary-foreground/70">
+              Profª Vera Massis
             </span>
           </div>
+
           <p className="mt-4 max-w-xs text-sm text-primary-foreground/70">
             Um espaço de leitura, pesquisa e encontro para toda a comunidade escolar.
             Acervo físico e digital em constante crescimento.
