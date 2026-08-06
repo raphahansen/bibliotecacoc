@@ -24,7 +24,7 @@ export function SiteHeader() {
               Biblioteca COC
             </span>
             <span className="block truncate text-[0.7rem] uppercase tracking-[0.18em] text-muted-foreground">
-              Novomundo
+              Profª Vera Massis
             </span>
           </span>
         </a>
