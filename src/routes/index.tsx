@@ -3,12 +3,15 @@ import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/components/hero";
 import { CategoryGrid } from "@/components/category-grid";
 import { BookCarousel } from "@/components/book-carousel";
+import { ReaderClub } from "@/components/reader-club";
+import { ReaderOfMonth } from "@/components/reader-of-month";
+import { AgendaSection } from "@/components/agenda-section";
 import { SiteFooter } from "@/components/site-footer";
 import { featured, novelties, topRated } from "@/data/library";
 
-const title = "Biblioteca COC Novomundo · Acervo digital da escola";
+const title = "Biblioteca COC Novomundo · Profª Vera Massis";
 const description =
-  "Explore mais de 2.000 títulos da Biblioteca COC Novomundo: categorias, livros em destaque, novidades e os mais bem avaliados pelos estudantes.";
+  "Acervo, avaliações e reservas da Biblioteca COC Novomundo: categorias, destaques, novidades, Club do COC Leitor, leitor do mês e agenda da sala de leitura.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -54,8 +57,12 @@ function Index() {
           description="Os livros com as melhores notas dadas pelos estudantes da escola."
           books={topRated}
         />
+        <ReaderClub />
+        <ReaderOfMonth />
+        <AgendaSection />
       </main>
       <SiteFooter />
     </div>
   );
 }
+
