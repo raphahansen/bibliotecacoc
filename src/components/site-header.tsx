@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { BookOpenText, Search, LogIn, UserRound, Menu, X } from "lucide-react";
+import { Search, LogIn, UserRound, Menu, X } from "lucide-react";
+import logo from "@/assets/logo-novomundo-coc.png.asset.json";
 
 const links = [
   { label: "Início", href: "#inicio" },
   { label: "Categorias", href: "#categorias" },
   { label: "Destaques", href: "#destaques" },
-  { label: "Novidades", href: "#novidades" },
-  { label: "Mais Avaliados", href: "#avaliados" },
+  { label: "Clube Leitor", href: "#clube" },
+  { label: "Leitor do Mês", href: "#leitor-do-mes" },
+  { label: "Agenda", href: "#agenda" },
 ];
 
 export function SiteHeader() {
@@ -16,10 +18,12 @@ export function SiteHeader() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:px-8">
         <a href="#inicio" className="flex min-w-0 items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-soft)]">
-            <BookOpenText className="size-5" />
-          </span>
-          <span className="min-w-0 leading-tight">
+          <img
+            src={logo.url}
+            alt="Colégio Novomundo · Plataforma de Educação COC"
+            className="h-9 w-auto shrink-0 sm:h-10"
+          />
+          <span className="hidden min-w-0 border-l border-border pl-3 leading-tight sm:block">
             <span className="block truncate font-display text-base font-semibold text-primary">
               Biblioteca COC Novomundo
             </span>
@@ -28,6 +32,7 @@ export function SiteHeader() {
             </span>
           </span>
         </a>
+
 
         <div className="hidden lg:block">
           <label className="group flex items-center gap-3 rounded-full border border-border bg-secondary/70 px-5 py-2.5 transition-colors focus-within:border-primary-soft focus-within:bg-card">
