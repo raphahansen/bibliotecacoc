@@ -1,23 +1,33 @@
 import { useState } from "react";
 import { Search, LogIn, UserRound, Menu, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import logo from "@/assets/logo-novomundo-coc.png.asset.json";
 
 const links = [
-  { label: "Início", href: "#inicio" },
-  { label: "Categorias", href: "#categorias" },
-  { label: "Destaques", href: "#destaques" },
-  { label: "Clube Leitor", href: "#clube" },
-  { label: "Leitor do Mês", href: "#leitor-do-mes" },
-  { label: "Agenda", href: "#agenda" },
+  { label: "Início", href: "/#inicio" },
+  { label: "Acervo", href: "/acervo" },
+  { label: "Categorias", href: "/#categorias" },
+  { label: "Destaques", href: "/#destaques" },
+  { label: "Clube Leitor", href: "/#clube" },
+  { label: "Leitor do Mês", href: "/#leitor-do-mes" },
+  { label: "Agenda", href: "/#agenda" },
 ];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [term, setTerm] = useState("");
+  const navigate = useNavigate();
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setOpen(false);
+    navigate({ to: "/acervo", search: { q: term.trim(), nivel: "" } });
+  };
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:px-8">
-        <a href="#inicio" className="flex min-w-0 items-center gap-3">
+        <a href="/#inicio" className="flex min-w-0 items-center gap-3">
           <img
             src={logo.url}
             alt="Colégio Novomundo · Plataforma de Educação COC"
@@ -33,17 +43,18 @@ export function SiteHeader() {
           </span>
         </a>
 
-
-        <div className="hidden lg:block">
+        <form onSubmit={submit} className="hidden lg:block">
           <label className="group flex items-center gap-3 rounded-full border border-border bg-secondary/70 px-5 py-2.5 transition-colors focus-within:border-primary-soft focus-within:bg-card">
             <Search className="size-4 shrink-0 text-muted-foreground" />
             <input
               type="search"
+              value={term}
+              onChange={(e) => setTerm(e.target.value)}
               placeholder="Buscar por título, autor ou categoria…"
               className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
           </label>
-        </div>
+        </form>
 
         <div className="flex items-center gap-2">
           <button className="hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-secondary sm:inline-flex">
@@ -79,14 +90,18 @@ export function SiteHeader() {
 
       {open && (
         <div className="border-t border-border bg-card px-4 pb-5 pt-4 lg:hidden">
-          <label className="mb-4 flex items-center gap-3 rounded-full border border-border bg-secondary/70 px-4 py-2.5">
-            <Search className="size-4 shrink-0 text-muted-foreground" />
-            <input
-              type="search"
-              placeholder="Buscar livros…"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </label>
+          <form onSubmit={submit}>
+            <label className="mb-4 flex items-center gap-3 rounded-full border border-border bg-secondary/70 px-4 py-2.5">
+              <Search className="size-4 shrink-0 text-muted-foreground" />
+              <input
+                type="search"
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Buscar livros…"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </label>
+          </form>
           <nav className="grid gap-1">
             {links.map((l) => (
               <a
