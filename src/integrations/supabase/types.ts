@@ -14,16 +14,324 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      books: {
+        Row: {
+          active: boolean
+          author: string
+          available_copies: number
+          category_id: string | null
+          collection: boolean
+          created_at: string
+          id: string
+          legacy_id: string | null
+          level: string
+          publisher: string
+          synopsis: string
+          title: string
+          total_copies: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          author?: string
+          available_copies?: number
+          category_id?: string | null
+          collection?: boolean
+          created_at?: string
+          id?: string
+          legacy_id?: string | null
+          level?: string
+          publisher?: string
+          synopsis?: string
+          title: string
+          total_copies?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          author?: string
+          available_copies?: number
+          category_id?: string | null
+          collection?: boolean
+          created_at?: string
+          id?: string
+          legacy_id?: string | null
+          level?: string
+          publisher?: string
+          synopsis?: string
+          title?: string
+          total_copies?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      loans: {
+        Row: {
+          book_id: string
+          created_at: string
+          due_date: string
+          id: string
+          loan_date: string
+          registered_by: string | null
+          reservation_id: string | null
+          returned_at: string | null
+          status: Database["public"]["Enums"]["loan_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          loan_date?: string
+          registered_by?: string | null
+          reservation_id?: string | null
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          loan_date?: string
+          registered_by?: string | null
+          reservation_id?: string | null
+          returned_at?: string | null
+          status?: Database["public"]["Enums"]["loan_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loans_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          full_name: string
+          grade: string | null
+          id: string
+          matricula: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          full_name?: string
+          grade?: string | null
+          id: string
+          matricula?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          full_name?: string
+          grade?: string | null
+          id?: string
+          matricula?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          book_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          queue_position: number | null
+          status: Database["public"]["Enums"]["reservation_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          queue_position?: number | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          queue_position?: number | null
+          status?: Database["public"]["Enums"]["reservation_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          book_id: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "aluno" | "professor" | "bibliotecario" | "admin"
+      loan_status: "ativo" | "devolvido" | "atrasado" | "perdido"
+      reservation_status:
+        | "pendente"
+        | "aprovada"
+        | "disponivel"
+        | "concluida"
+        | "cancelada"
+        | "expirada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +458,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["aluno", "professor", "bibliotecario", "admin"],
+      loan_status: ["ativo", "devolvido", "atrasado", "perdido"],
+      reservation_status: [
+        "pendente",
+        "aprovada",
+        "disponivel",
+        "concluida",
+        "cancelada",
+        "expirada",
+      ],
+    },
   },
 } as const
