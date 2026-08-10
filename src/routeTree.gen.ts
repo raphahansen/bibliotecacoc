@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcervoRouteImport } from './routes/acervo'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const AcervoRoute = AcervoRouteImport.update({
   path: '/acervo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
   id: '/categoria/$slug',
   path: '/categoria/$slug',
@@ -32,30 +38,34 @@ const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/auth': typeof AuthRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/auth': typeof AuthRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
+  '/auth': typeof AuthRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/acervo' | '/categoria/$slug'
+  fullPaths: '/' | '/acervo' | '/auth' | '/categoria/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/acervo' | '/categoria/$slug'
-  id: '__root__' | '/' | '/acervo' | '/categoria/$slug'
+  to: '/' | '/acervo' | '/auth' | '/categoria/$slug'
+  id: '__root__' | '/' | '/acervo' | '/auth' | '/categoria/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcervoRoute: typeof AcervoRoute
+  AuthRoute: typeof AuthRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcervoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categoria/$slug': {
       id: '/categoria/$slug'
       path: '/categoria/$slug'
@@ -88,18 +105,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcervoRoute: AcervoRoute,
+  AuthRoute: AuthRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
