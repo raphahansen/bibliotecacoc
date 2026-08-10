@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriaSlugRoute = CategoriaSlugRouteImport.update({
   id: '/categoria/$slug',
   path: '/categoria/$slug',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/acervo' | '/auth' | '/categoria/$slug'
+  fullPaths: '/' | '/acervo' | '/auth' | '/redefinir-senha' | '/categoria/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/acervo' | '/auth' | '/categoria/$slug'
-  id: '__root__' | '/' | '/acervo' | '/auth' | '/categoria/$slug'
+  to: '/' | '/acervo' | '/auth' | '/redefinir-senha' | '/categoria/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/acervo'
+    | '/auth'
+    | '/redefinir-senha'
+    | '/categoria/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcervoRoute: typeof AcervoRoute
   AuthRoute: typeof AuthRoute
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
 }
 
@@ -92,6 +108,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categoria/$slug': {
       id: '/categoria/$slug'
       path: '/categoria/$slug'
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcervoRoute: AcervoRoute,
   AuthRoute: AuthRoute,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
 }
 export const routeTree = rootRouteImport
