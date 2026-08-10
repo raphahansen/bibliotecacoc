@@ -14,15 +14,15 @@ A página inicial deve conter:
 
 - Cabeçalho fixo com:
 
-  - Logo da Biblioteca Digital.
+- Logo da Biblioteca Digital.
 
-  - Barra de pesquisa central.
+- Barra de pesquisa central.
 
-  - Botão de Login.
+- Botão de Login.
 
-  - Botão de Perfil (apenas visual).
+- Botão de Perfil (apenas visual).
 
-  - Menu responsivo.
+- Menu responsivo.
 
 - Banner principal com uma imagem ilustrativa de biblioteca e uma mensagem incentivando a leitura.
 
@@ -53,22 +53,34 @@ A página inicial deve conter:
   - Infantil
 
   - Aventura e Ação
-
+  
   - Cartas
- - Política
+    
+  - Política
   - Filosofia
+    
   - Biografias
+    
   - Autoajuda
   - Guerra
-   - História
+
+  - História
+
   -  Diários
-   - Estudos
-   - Turismo
-   - Terror e Suspense
-    - YouTube
-    - Sensíveis
-    - Quadrinhos
-    - Sustentabilidade
+
+  - Estudos
+
+  - Turismo
+
+  - Terror e Suspense
+
+  - YouTube
+
+  - Sensíveis
+
+  - Quadrinhos
+
+  - Sustentabilidade
 
 - Seção "Livros em Destaque" em formato de carrossel.
 
