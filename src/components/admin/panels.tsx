@@ -801,11 +801,12 @@ export function LoansAdmin() {
                   {l.books?.title ?? "—"}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {l.profiles?.full_name || l.profiles?.email} · devolver até{" "}
+                  {l.profiles?.full_name || l.profiles?.email} ·{" "}
+                  {l.book_copies?.asset_code ? `${l.book_copies.asset_code} · ` : ""}devolver até{" "}
                   {new Date(l.due_date).toLocaleDateString("pt-BR")}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
                     late ? "bg-destructive/15 text-destructive" : "bg-secondary text-primary"
@@ -813,14 +814,45 @@ export function LoansAdmin() {
                 >
                   {late ? "Atrasado" : loanLabels[l.status]}
                 </span>
-                {!l.returned_at && (
+                {!l.returned_at && returningId !== l.id && (
                   <button
                     className={ghostBtn}
-                    onClick={() => giveBack.mutate({ id: l.id })}
-
+                    onClick={() => {
+                      setReturnStatus("disponivel");
+                      setReturningId(l.id);
+                    }}
                   >
                     <RotateCcw className="size-3" /> Devolver
                   </button>
+                )}
+                {!l.returned_at && returningId === l.id && (
+                  <>
+                    <select
+                      className={`${input} py-1.5 text-xs`}
+                      value={returnStatus}
+                      onChange={(e) => setReturnStatus(e.target.value)}
+                    >
+                      <option value="disponivel">Devolver como disponível</option>
+                      <option value="manutencao">Enviar para manutenção</option>
+                      <option value="perdido">Registrar como perdido</option>
+                      <option value="extraviado">Registrar como extraviado</option>
+                    </select>
+                    <button
+                      className={ghostBtn}
+                      disabled={giveBack.isPending}
+                      onClick={() => giveBack.mutate({ id: l.id, copyStatus: returnStatus })}
+                    >
+                      {giveBack.isPending ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Check className="size-3" />
+                      )}
+                      Confirmar
+                    </button>
+                    <button className={ghostBtn} onClick={() => setReturningId(null)}>
+                      <X className="size-3" /> Cancelar
+                    </button>
+                  </>
                 )}
               </div>
             </div>
