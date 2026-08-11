@@ -431,6 +431,28 @@ export function ReservationsAdmin() {
     },
   });
 
+  const [checkoutFor, setCheckoutFor] = useState<{
+    id: string;
+    user_id: string;
+    book_id: string;
+  } | null>(null);
+  const [copyId, setCopyId] = useState("");
+
+  const copies = useQuery({
+    queryKey: ["admin-reservation-copies", checkoutFor?.book_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select("id, asset_code")
+        .eq("book_id", checkoutFor!.book_id)
+        .eq("status", "disponivel")
+        .order("asset_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; asset_code: string }[];
+    },
+    enabled: !!checkoutFor,
+  });
+
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ReservationStatus }) => {
       const { error } = await supabase.from("reservations").update({ status }).eq("id", id);
@@ -444,51 +466,26 @@ export function ReservationsAdmin() {
   });
 
   const toLoan = useMutation({
-    mutationFn: async (r: { id: string; user_id: string; book_id: string }) => {
-      const { data: setting } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "loan_days")
-        .maybeSingle();
-      const days = Number((setting as { value: string } | null)?.value ?? 15);
-      const due = new Date();
-      due.setDate(due.getDate() + days);
-
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("available_copies")
-        .eq("id", r.book_id)
-        .single();
-      if (bookError) throw bookError;
-      if ((book as { available_copies: number }).available_copies < 1) {
-        throw new Error("Sem exemplares disponíveis");
-      }
-
-      const { error: loanError } = await supabase.from("loans").insert({
-        user_id: r.user_id,
-        book_id: r.book_id,
-        reservation_id: r.id,
-        due_date: due.toISOString().slice(0, 10),
-        status: "ativo",
+    mutationFn: async () => {
+      if (!checkoutFor || !copyId) throw new Error("Selecione o exemplar");
+      const { error } = await supabase.rpc("register_checkout", {
+        _user_id: checkoutFor.user_id,
+        _copy_id: copyId,
+        _reservation_id: checkoutFor.id,
       });
-      if (loanError) throw loanError;
-
-      await supabase
-        .from("books")
-        .update({
-          available_copies: (book as { available_copies: number }).available_copies - 1,
-        })
-        .eq("id", r.book_id);
-      await supabase.from("reservations").update({ status: "concluida" }).eq("id", r.id);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Empréstimo registrado.");
+      setCheckoutFor(null);
+      setCopyId("");
       void qc.invalidateQueries({ queryKey: ["admin-reservations"] });
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível registrar."),
   });
+
 
   return (
     <Card title="Reservas">
