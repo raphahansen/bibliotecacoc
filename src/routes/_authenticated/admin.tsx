@@ -10,6 +10,7 @@ import {
   DashboardAdmin,
   LoansAdmin,
   ReservationsAdmin,
+  ReviewsAdmin,
   UsersAdmin,
 } from "@/components/admin/panels";
 import { CopiesAdmin } from "@/components/admin/copies-panel";
