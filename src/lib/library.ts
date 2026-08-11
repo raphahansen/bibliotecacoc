@@ -198,7 +198,7 @@ export async function fetchPublishers() {
 export type RatingStat = { avg: number; count: number };
 
 export async function fetchRatingStats() {
-  const { data, error } = await supabase.from("reviews").select("book_id, rating");
+  const { data, error } = await supabase.from("reviews_public").select("book_id, rating");
   if (error) throw error;
   const acc = new Map<string, { sum: number; count: number }>();
   for (const row of (data ?? []) as { book_id: string; rating: number }[]) {
@@ -258,7 +258,6 @@ export async function fetchHomeSections() {
 
 export type ReviewRow = {
   id: string;
-  user_id: string;
   book_id: string;
   rating: number;
   comment: string;
@@ -267,8 +266,8 @@ export type ReviewRow = {
 
 export async function fetchBookReviews(bookId: string) {
   const { data, error } = await supabase
-    .from("reviews")
-    .select("id, user_id, book_id, rating, comment, created_at")
+    .from("reviews_public")
+    .select("id, book_id, rating, comment, created_at")
     .eq("book_id", bookId)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -277,8 +276,8 @@ export async function fetchBookReviews(bookId: string) {
 
 export async function fetchLatestReviews(limit = 6) {
   const { data, error } = await supabase
-    .from("reviews")
-    .select("id, user_id, book_id, rating, comment, created_at")
+    .from("reviews_public")
+    .select("id, book_id, rating, comment, created_at")
     .neq("comment", "")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -406,15 +405,29 @@ export type LatestReview = ReviewRow & {
 
 export async function fetchLatestReviewsWithBooks(limit = 6) {
   const { data, error } = await supabase
-    .from("reviews")
-    .select(
-      "id, user_id, book_id, rating, comment, created_at, books(id, title, author, available_copies)",
-    )
+    .from("reviews_public")
+    .select("id, book_id, rating, comment, created_at")
     .neq("comment", "")
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as LatestReview[];
+  const rows = (data ?? []) as ReviewRow[];
+  const books = await fetchBooksByIds([...new Set(rows.map((r) => r.book_id))]);
+  const byId = new Map(books.map((b) => [b.id, b]));
+  return rows.map((r) => {
+    const b = byId.get(r.book_id);
+    return {
+      ...r,
+      books: b
+        ? {
+            id: b.id,
+            title: b.title,
+            author: b.author,
+            available_copies: b.available_copies,
+          }
+        : null,
+    };
+  }) as LatestReview[];
 }
 
 export type ReaderOfMonth = {
