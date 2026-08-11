@@ -771,7 +771,7 @@ export function LoansAdmin() {
               </option>
               {copies.data?.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.asset_code}
+                  {c.asset_code} · {c.condition} · {c.location}
                 </option>
               ))}
             </select>
