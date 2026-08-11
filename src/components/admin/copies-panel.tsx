@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search, Plus, Check, X, Barcode, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
+import { Pagination } from "@/components/admin/pagination";
+
+const COPIES_PAGE_SIZE = 20;
+
 
 const input =
   "rounded-2xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary-soft";
@@ -417,12 +421,18 @@ export function BookCopiesManager({ bookId, title }: { bookId: string; title: st
 export function CopiesAdmin() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
+  const [sort, setSort] = useState("asset_code");
+  const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
   const [bookQuery, setBookQuery] = useState("");
   const [bookId, setBookId] = useState("");
 
+  useEffect(() => {
+    setPage(0);
+  }, [q, status]);
+
   const copies = useQuery({
-    queryKey: ["admin-copies", q, status],
+    queryKey: ["admin-copies", q, status, sort, page],
     queryFn: async () => {
       const term = q.trim().replace(/[,%()]/g, " ");
       let bookIds: string[] = [];
@@ -431,11 +441,11 @@ export function CopiesAdmin() {
           .from("books")
           .select("id")
           .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
-          .limit(60);
+          .limit(200);
         bookIds = (books ?? []).map((b) => b.id);
       }
 
-      let query = supabase.from("book_copies").select(copySelect).order("asset_code").limit(60);
+      let query = supabase.from("book_copies").select(copySelect, { count: "exact" });
 
       if (status) query = query.eq("status", status);
       if (term) {
@@ -444,11 +454,19 @@ export function CopiesAdmin() {
         query = query.or(filters.join(","));
       }
 
-      const { data, error } = await query;
+      if (sort === "recent") query = query.order("created_at", { ascending: false });
+      else if (sort === "status") query = query.order("status").order("asset_code");
+      else query = query.order("asset_code");
+
+      const { data, error, count } = await query.range(
+        page * COPIES_PAGE_SIZE,
+        page * COPIES_PAGE_SIZE + COPIES_PAGE_SIZE - 1,
+      );
       if (error) throw error;
-      return (data ?? []) as unknown as CopyRow[];
+      return { total: count ?? 0, rows: (data ?? []) as unknown as CopyRow[] };
     },
   });
+
 
   const bookOptions = useQuery({
     queryKey: ["admin-copies-books", bookQuery],
@@ -464,7 +482,7 @@ export function CopiesAdmin() {
   });
 
   return (
-    <Card title="Exemplares e patrimônio">
+    <Card title="Inventário de exemplares">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -482,6 +500,11 @@ export function CopiesAdmin() {
               {label}
             </option>
           ))}
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className={input}>
+          <option value="asset_code">Ordenar por patrimônio</option>
+          <option value="status">Ordenar por situação</option>
+          <option value="recent">Mais recentes</option>
         </select>
         <button className={primaryBtn} onClick={() => setCreating((v) => !v)}>
           <Plus className="size-4" /> Novo exemplar
@@ -523,13 +546,22 @@ export function CopiesAdmin() {
             <Loader2 className="size-4 animate-spin" /> Carregando exemplares…
           </p>
         )}
-        {!copies.isLoading && (copies.data ?? []).length === 0 && (
+        {!copies.isLoading && (copies.data?.rows ?? []).length === 0 && (
           <p className="text-sm text-muted-foreground">Nenhum exemplar encontrado.</p>
         )}
-        {(copies.data ?? []).map((copy) => (
+        {(copies.data?.rows ?? []).map((copy) => (
           <CopyRowItem key={copy.id} copy={copy} showBook />
         ))}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={COPIES_PAGE_SIZE}
+        total={copies.data?.total ?? 0}
+        onPage={setPage}
+        unitLabel="exemplares"
+      />
     </Card>
+
   );
 }

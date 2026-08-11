@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
@@ -7,11 +7,12 @@ import {
   Check,
   X,
   RotateCcw,
-  BookOpen,
-  UserRound,
   Layers,
   Star,
   Trash2,
+  KeyRound,
+  Pencil,
+  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,8 +25,15 @@ import {
   type LoanStatus,
   type ReservationStatus,
 } from "@/lib/library";
-import { createUsers, setUserRole } from "@/lib/admin.functions";
+import {
+  setUserRole,
+  updateUserProfile,
+  resetUserPassword,
+  deleteUser,
+} from "@/lib/admin.functions";
 import { Card } from "@/components/admin/card";
+import { Pagination } from "@/components/admin/pagination";
+import { BooksImport, UsersImport } from "@/components/admin/csv-imports";
 import { BookCopiesManager, useCopyCounts } from "@/components/admin/copies-panel";
 
 const input =
@@ -35,7 +43,10 @@ const primaryBtn =
 const ghostBtn =
   "inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-primary hover:bg-secondary";
 
+const PAGE_SIZE = 20;
+
 export { Card };
+
 
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-muted-foreground">{text}</p>;
@@ -59,7 +70,13 @@ type BookRow = {
 export function BooksAdmin() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [sort, setSort] = useState("title");
+  const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [managingId, setManagingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -71,6 +88,10 @@ export function BooksAdmin() {
     initial_copies: 0,
     synopsis: "",
   });
+
+  useEffect(() => {
+    setPage(0);
+  }, [q, categoryFilter, levelFilter, statusFilter]);
 
   const categories = useQuery({
     queryKey: ["admin-categories"],
@@ -85,20 +106,34 @@ export function BooksAdmin() {
   });
 
   const books = useQuery({
-    queryKey: ["admin-books", q],
+    queryKey: ["admin-books", q, categoryFilter, levelFilter, statusFilter, sort, page],
     queryFn: async () => {
       let query = supabase
         .from("books")
         .select(
-          "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis",
-        )
-        .order("title")
-        .limit(40);
+          "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis, categories(name)",
+          { count: "exact" },
+        );
       const term = q.trim().replace(/[,%()]/g, " ");
       if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
-      const { data, error } = await query;
+      if (categoryFilter === "none") query = query.is("category_id", null);
+      else if (categoryFilter) query = query.eq("category_id", categoryFilter);
+      if (levelFilter) query = query.eq("level", levelFilter);
+      if (statusFilter) query = query.eq("active", statusFilter === "active");
+
+      if (sort === "author") query = query.order("author");
+      else if (sort === "recent") query = query.order("created_at", { ascending: false });
+      else query = query.order("title");
+
+      const { data, error, count } = await query.range(
+        page * PAGE_SIZE,
+        page * PAGE_SIZE + PAGE_SIZE - 1,
+      );
       if (error) throw error;
-      return (data ?? []) as BookRow[];
+      return {
+        total: count ?? 0,
+        rows: (data ?? []) as unknown as (BookRow & { categories: { name: string } | null })[],
+      };
     },
   });
 
@@ -116,6 +151,8 @@ export function BooksAdmin() {
     onSuccess: () => {
       toast.success("Livro atualizado.");
       void qc.invalidateQueries({ queryKey: ["admin-books"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
     },
     onError: () => toast.error("Não foi possível atualizar o livro."),
   });
@@ -162,6 +199,8 @@ export function BooksAdmin() {
       });
       void qc.invalidateQueries({ queryKey: ["admin-books"] });
       void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
+      void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível cadastrar."),
   });
@@ -199,12 +238,12 @@ export function BooksAdmin() {
     );
   };
 
-  const counts = useCopyCounts((books.data ?? []).map((b) => b.id));
+  const counts = useCopyCounts((books.data?.rows ?? []).map((b) => b.id));
 
   return (
     <Card title="Livros">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex flex-1 items-center gap-2 rounded-full border border-border bg-background px-4 py-2">
+        <label className="flex min-w-[14rem] flex-1 items-center gap-2 rounded-full border border-border bg-background px-4 py-2">
           <Search className="size-4 text-muted-foreground" />
           <input
             value={q}
@@ -216,10 +255,51 @@ export function BooksAdmin() {
         <button onClick={() => setCreating((v) => !v)} className={primaryBtn}>
           <Plus className="size-4" /> Novo livro
         </button>
+        <button onClick={() => setImporting((v) => !v)} className={primaryBtn}>
+          <Upload className="size-4" /> Importar livros (CSV)
+        </button>
       </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <select
+          className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="">Todas as categorias / prateleiras</option>
+          <option value="none">Sem categoria definida</option>
+          {categories.data?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <select className={input} value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
+          <option value="">Todos os níveis</option>
+          <option value="livre">Livre</option>
+          <option value="fundamental1">Fundamental I</option>
+          <option value="fundamental2">Fundamental II</option>
+          <option value="medio">Ensino Médio</option>
+        </select>
+        <select className={input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Ativos e inativos</option>
+          <option value="active">Somente ativos</option>
+          <option value="inactive">Somente inativos</option>
+        </select>
+        <select className={input} value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="title">Ordenar por título</option>
+          <option value="author">Ordenar por autor</option>
+          <option value="recent">Mais recentes</option>
+        </select>
+      </div>
+
+      {importing && <BooksImport onDone={() => setImporting(false)} />}
 
       {creating && (
         <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-background p-4 sm:grid-cols-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:col-span-2">
+            Dados da obra
+          </p>
           <input
             className={input}
             placeholder="Título"
@@ -243,7 +323,7 @@ export function BooksAdmin() {
             value={form.category_id}
             onChange={(e) => setForm({ ...form, category_id: e.target.value })}
           >
-            <option value="">Sem categoria</option>
+            <option value="">Categoria / Prateleira</option>
             {categories.data?.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -260,15 +340,6 @@ export function BooksAdmin() {
             <option value="fundamental2">Fundamental II</option>
             <option value="medio">Ensino Médio</option>
           </select>
-          <input
-            className={input}
-            type="number"
-            min={0}
-            max={100}
-            placeholder="Exemplares iniciais (opcional)"
-            value={form.initial_copies}
-            onChange={(e) => setForm({ ...form, initial_copies: Number(e.target.value) })}
-          />
           <textarea
             className={`${input} sm:col-span-2`}
             rows={3}
@@ -276,6 +347,21 @@ export function BooksAdmin() {
             value={form.synopsis}
             onChange={(e) => setForm({ ...form, synopsis: e.target.value })}
           />
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:col-span-2">
+            Exemplares físicos
+          </p>
+          <input
+            className={input}
+            type="number"
+            min={0}
+            max={100}
+            placeholder="Exemplares iniciais a cadastrar"
+            value={form.initial_copies}
+            onChange={(e) => setForm({ ...form, initial_copies: Number(e.target.value) })}
+          />
+          <p className="self-center text-xs text-muted-foreground">
+            Cada exemplar vira uma unidade física com código de patrimônio próprio.
+          </p>
           <button
             onClick={() => create.mutate()}
             disabled={create.isPending}
@@ -288,7 +374,7 @@ export function BooksAdmin() {
 
       <div className="mt-4 grid gap-2">
         {books.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
-        {books.data?.map((b) => (
+        {books.data?.rows.map((b) => (
           <div
             key={b.id}
             className="rounded-2xl border border-border bg-background px-4 py-3"
@@ -318,7 +404,7 @@ export function BooksAdmin() {
                   value={form.category_id}
                   onChange={(e) => setForm({ ...form, category_id: e.target.value })}
                 >
-                  <option value="">Sem categoria</option>
+                  <option value="">Categoria / Prateleira</option>
                   {categories.data?.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -365,8 +451,17 @@ export function BooksAdmin() {
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">{b.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{b.author}</p>
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {b.title}
+                      {!b.active && (
+                        <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                          inativo
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {b.author} · Categoria / Prateleira: {b.categories?.name ?? "Sem categoria"}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {(counts.data?.[b.id]?.["total"] ?? 0)} exemplares ·{" "}
                       {(counts.data?.[b.id]?.["disponivel"] ?? 0)} disponíveis ·{" "}
@@ -382,7 +477,7 @@ export function BooksAdmin() {
                       <Layers className="size-3" /> Gerenciar exemplares
                     </button>
                     <button className={ghostBtn} onClick={() => startEdit(b)}>
-                      Editar
+                      <Pencil className="size-3" /> Editar
                     </button>
                     <button
                       className={ghostBtn}
@@ -397,11 +492,20 @@ export function BooksAdmin() {
             )}
           </div>
         ))}
-        {books.data?.length === 0 && <Empty text="Nenhum livro encontrado." />}
+        {books.data?.rows.length === 0 && <Empty text="Nenhum livro encontrado." />}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={books.data?.total ?? 0}
+        onPage={setPage}
+        unitLabel="livros"
+      />
     </Card>
   );
 }
+
 
 /* --------------------------------- Reservas -------------------------------- */
 
@@ -894,242 +998,536 @@ export function LoansAdmin() {
 
 /* --------------------------------- Usuários -------------------------------- */
 
+type UserRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  matricula: string | null;
+  grade: string | null;
+  active: boolean;
+  role: AppRole;
+};
+
 export function UsersAdmin({ isAdmin }: { isAdmin: boolean }) {
   const qc = useQueryClient();
-  const [bulk, setBulk] = useState("");
-  const [sending, setSending] = useState(false);
+  const allowedRoles: AppRole[] = isAdmin
+    ? ["aluno", "professor", "bibliotecario", "admin"]
+    : ["aluno", "professor"];
+
+  const [term, setTerm] = useState("");
+  const [page, setPage] = useState(0);
+  const [showImport, setShowImport] = useState(false);
+  const [editing, setEditing] = useState<UserRow | null>(null);
+  const [pwFor, setPwFor] = useState<string | null>(null);
+  const [pw, setPw] = useState({ a: "", b: "" });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(0);
+  }, [term]);
 
   const users = useQuery({
-    queryKey: ["admin-users"],
+    queryKey: ["admin-users", term, page],
     queryFn: async () => {
-      const [profilesRes, rolesRes] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, email, matricula, grade, active, created_at")
-          .order("full_name")
-          .limit(200),
-        supabase.from("user_roles").select("user_id, role"),
-      ]);
-      if (profilesRes.error) throw profilesRes.error;
+      let query = supabase
+        .from("profiles")
+        .select("id, full_name, email, matricula, grade, active", { count: "exact" })
+        .order("full_name")
+        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+      const q = term.trim().replace(/[,%()]/g, " ");
+      if (q) query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%,matricula.ilike.%${q}%`);
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      const ids = (data ?? []).map((p) => (p as { id: string }).id);
+      const rolesRes = ids.length
+        ? await supabase.from("user_roles").select("user_id, role").in("user_id", ids)
+        : { data: [] as { user_id: string; role: AppRole }[] };
       const roles = new Map<string, AppRole>();
-      for (const r of (rolesRes.data ?? []) as { user_id: string; role: AppRole }[]) {
+      for (const r of ((rolesRes.data ?? []) as { user_id: string; role: AppRole }[])) {
         roles.set(r.user_id, r.role);
       }
-      return (profilesRes.data ?? []).map((p) => ({
-        ...(p as {
-          id: string;
-          full_name: string;
-          email: string;
-          matricula: string | null;
-          grade: string | null;
-          active: boolean;
-        }),
-        role: roles.get((p as { id: string }).id) ?? ("aluno" as AppRole),
-      }));
+      return {
+        total: count ?? 0,
+        rows: (data ?? []).map((p) => ({
+          ...(p as Omit<UserRow, "role">),
+          role: roles.get((p as { id: string }).id) ?? ("aluno" as AppRole),
+        })) as UserRow[],
+      };
     },
   });
 
-  const toggleActive = useMutation({
-    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      const { error } = await supabase.from("profiles").update({ active }).eq("id", id);
-      if (error) throw error;
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["admin-users"] });
+    void qc.invalidateQueries({ queryKey: ["admin-loan-users"] });
+    void qc.invalidateQueries({ queryKey: ["admin-stats"] });
+  };
+
+  const canManage = (role: AppRole) =>
+    isAdmin || role === "aluno" || role === "professor";
+
+  const saveUser = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      await updateUserProfile({
+        data: {
+          userId: editing.id,
+          full_name: editing.full_name.trim(),
+          email: editing.email.trim(),
+          matricula: editing.matricula,
+          grade: editing.grade,
+          active: editing.active,
+        },
+      });
     },
     onSuccess: () => {
       toast.success("Cadastro atualizado.");
-      void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      setEditing(null);
+      refresh();
     },
-    onError: () => toast.error("Não foi possível atualizar o cadastro."),
+    onError: (e: Error) => toast.error(e.message || "Não foi possível salvar o cadastro."),
   });
 
-  const importUsers = async () => {
-    const rows = bulk
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.toLowerCase().startsWith("nome"));
-    if (rows.length === 0) {
-      toast.error("Cole ao menos uma linha no formato indicado.");
-      return;
-    }
-    const parsed = rows.map((line) => {
-      const [full_name = "", email = "", password = "", matricula = "", grade = "", role = "aluno"] =
-        line.split(/[;,]/).map((c) => c.trim());
-      return {
-        full_name,
-        email,
-        password: password || "biblioteca123",
-        matricula,
-        grade,
-        role: (["aluno", "professor", "bibliotecario", "admin"].includes(role)
-          ? role
-          : "aluno") as AppRole,
-      };
-    });
-    setSending(true);
-    try {
-      const res = await createUsers({ data: { users: parsed } });
-      const ok = res.results.filter((r) => r.ok).length;
-      const failed = res.results.filter((r) => !r.ok);
-      toast.success(`${ok} conta(s) criada(s).`);
-      if (failed.length) toast.error(`${failed.length} falharam: ${failed[0]?.message}`);
-      setBulk("");
-      void qc.invalidateQueries({ queryKey: ["admin-users"] });
-    } catch {
-      toast.error("Não foi possível importar os usuários.");
-    } finally {
-      setSending(false);
-    }
-  };
+  const resetPw = useMutation({
+    mutationFn: async () => {
+      if (!pwFor) return;
+      if (pw.a.length < 6) throw new Error("A senha precisa ter ao menos 6 caracteres");
+      if (pw.a !== pw.b) throw new Error("As senhas não conferem");
+      await resetUserPassword({ data: { userId: pwFor, password: pw.a } });
+    },
+    onSuccess: () => {
+      toast.success("Senha redefinida.");
+      setPwFor(null);
+      setPw({ a: "", b: "" });
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível redefinir a senha."),
+  });
+
+  const removeUser = useMutation({
+    mutationFn: (userId: string) => deleteUser({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Conta excluída. O histórico da biblioteca foi preservado.");
+      setConfirmDelete(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível excluir a conta."),
+  });
 
   const changeRole = async (userId: string, role: AppRole) => {
     try {
       await setUserRole({ data: { userId, role } });
       toast.success("Perfil de acesso alterado.");
-      void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      refresh();
     } catch {
       toast.error("Não foi possível alterar o perfil de acesso.");
     }
   };
 
+  const toggleActive = useMutation({
+    mutationFn: async (u: UserRow) => {
+      await updateUserProfile({
+        data: {
+          userId: u.id,
+          full_name: u.full_name,
+          email: u.email,
+          matricula: u.matricula,
+          grade: u.grade,
+          active: !u.active,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Cadastro atualizado.");
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível atualizar o cadastro."),
+  });
+
   return (
     <Card title="Usuários">
-      {isAdmin && (
-        <div className="mb-5 rounded-2xl border border-border bg-background p-4">
-          <p className="text-sm font-semibold text-foreground">Importação em massa</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Uma linha por pessoa: nome; e-mail; senha; matrícula; turma; perfil
-            (aluno/professor/bibliotecario/admin).
-          </p>
-          <textarea
-            rows={4}
-            value={bulk}
-            onChange={(e) => setBulk(e.target.value)}
-            placeholder="Maria Silva; maria@escola.com; senha123; 20250012; 8º ano B; aluno"
-            className={`${input} mt-3 w-full`}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="flex flex-1 items-center gap-2 rounded-full border border-border bg-background px-4 py-2">
+          <Search className="size-4 text-muted-foreground" />
+          <input
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="Buscar por nome, e-mail ou matrícula"
+            className="w-full bg-transparent text-sm outline-none"
           />
-          <button onClick={importUsers} disabled={sending} className={`${primaryBtn} mt-3`}>
-            {sending && <Loader2 className="size-4 animate-spin" />} Criar contas
-          </button>
-        </div>
-      )}
+        </label>
+        <button className={primaryBtn} onClick={() => setShowImport((v) => !v)}>
+          <Upload className="size-4" /> Importar usuários (CSV)
+        </button>
+      </div>
+
+      <div className="mt-4">{showImport && <UsersImport allowedRoles={allowedRoles} />}</div>
 
       {users.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
       <div className="grid gap-2">
-        {users.data?.map((u) => (
-          <div
-            key={u.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {u.full_name || "Sem nome"}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {u.email}
-                {u.matricula ? ` · matrícula ${u.matricula}` : ""}
-                {u.grade ? ` · ${u.grade}` : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isAdmin ? (
-                <select
-                  value={u.role}
-                  onChange={(e) => changeRole(u.id, e.target.value as AppRole)}
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-primary"
-                >
-                  {(Object.keys(roleLabels) as AppRole[]).map((r) => (
-                    <option key={r} value={r}>
-                      {roleLabels[r]}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-primary">
-                  {roleLabels[u.role]}
-                </span>
-              )}
-              <button
-                className={ghostBtn}
-                onClick={() => toggleActive.mutate({ id: u.id, active: !u.active })}
-              >
-                {u.active ? "Inativar" : "Ativar"}
-              </button>
-            </div>
+        {users.data?.rows.map((u) => (
+          <div key={u.id} className="rounded-2xl border border-border bg-background px-4 py-3">
+            {editing?.id === u.id ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className={input}
+                  value={editing.full_name}
+                  onChange={(e) => setEditing({ ...editing, full_name: e.target.value })}
+                  placeholder="Nome completo"
+                />
+                <input
+                  className={input}
+                  value={editing.email}
+                  onChange={(e) => setEditing({ ...editing, email: e.target.value })}
+                  placeholder="E-mail"
+                />
+                <input
+                  className={input}
+                  value={editing.matricula ?? ""}
+                  onChange={(e) => setEditing({ ...editing, matricula: e.target.value })}
+                  placeholder="RM / matrícula"
+                />
+                <input
+                  className={input}
+                  value={editing.grade ?? ""}
+                  onChange={(e) => setEditing({ ...editing, grade: e.target.value })}
+                  placeholder="Série / turma"
+                />
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={editing.active}
+                    onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
+                  />
+                  Cadastro ativo
+                </label>
+                <div className="flex gap-2 sm:col-span-2">
+                  <button className={primaryBtn} disabled={saveUser.isPending} onClick={() => saveUser.mutate()}>
+                    {saveUser.isPending && <Loader2 className="size-4 animate-spin" />} Salvar
+                  </button>
+                  <button className={ghostBtn} onClick={() => setEditing(null)}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {u.full_name || "Sem nome"}
+                    {!u.active && (
+                      <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        inativo
+                      </span>
+                    )}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {u.email}
+                    {u.matricula ? ` · RM ${u.matricula}` : ""}
+                    {u.grade ? ` · ${u.grade}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAdmin ? (
+                    <select
+                      value={u.role}
+                      onChange={(e) => changeRole(u.id, e.target.value as AppRole)}
+                      className="max-w-[10rem] truncate rounded-full border border-border bg-card px-3 py-1.5 text-xs text-primary"
+                    >
+                      {(Object.keys(roleLabels) as AppRole[]).map((r) => (
+                        <option key={r} value={r}>
+                          {roleLabels[r]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="rounded-full bg-secondary px-3 py-1 text-xs text-primary">
+                      {roleLabels[u.role]}
+                    </span>
+                  )}
+                  {canManage(u.role) && (
+                    <>
+                      <button className={ghostBtn} onClick={() => setEditing(u)}>
+                        <Pencil className="size-3" /> Editar
+                      </button>
+                      <button
+                        className={ghostBtn}
+                        onClick={() => {
+                          setPw({ a: "", b: "" });
+                          setPwFor(pwFor === u.id ? null : u.id);
+                        }}
+                      >
+                        <KeyRound className="size-3" /> Redefinir senha
+                      </button>
+                      <button className={ghostBtn} onClick={() => toggleActive.mutate(u)}>
+                        {u.active ? "Inativar" : "Ativar"}
+                      </button>
+                    </>
+                  )}
+                  {isAdmin &&
+                    (confirmDelete === u.id ? (
+                      <>
+                        <button
+                          className={ghostBtn}
+                          disabled={removeUser.isPending}
+                          onClick={() => removeUser.mutate(u.id)}
+                        >
+                          {removeUser.isPending ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Check className="size-3" />
+                          )}
+                          Confirmar exclusão
+                        </button>
+                        <button className={ghostBtn} onClick={() => setConfirmDelete(null)}>
+                          <X className="size-3" /> Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button className={ghostBtn} onClick={() => setConfirmDelete(u.id)}>
+                        <Trash2 className="size-3" /> Excluir
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {pwFor === u.id && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                <input
+                  className={`${input} flex-1`}
+                  type="password"
+                  value={pw.a}
+                  onChange={(e) => setPw({ ...pw, a: e.target.value })}
+                  placeholder="Nova senha (mín. 6 caracteres)"
+                />
+                <input
+                  className={`${input} flex-1`}
+                  type="password"
+                  value={pw.b}
+                  onChange={(e) => setPw({ ...pw, b: e.target.value })}
+                  placeholder="Confirmar nova senha"
+                />
+                <button className={primaryBtn} disabled={resetPw.isPending} onClick={() => resetPw.mutate()}>
+                  {resetPw.isPending && <Loader2 className="size-4 animate-spin" />} Salvar senha
+                </button>
+                <button className={ghostBtn} onClick={() => setPwFor(null)}>
+                  Cancelar
+                </button>
+              </div>
+            )}
           </div>
         ))}
-        {users.data?.length === 0 && <Empty text="Nenhum usuário cadastrado." />}
+        {users.data?.rows.length === 0 && <Empty text="Nenhum usuário encontrado." />}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={users.data?.total ?? 0}
+        onPage={setPage}
+        unitLabel="usuários"
+      />
     </Card>
   );
 }
 
+
 /* -------------------------------- Categorias ------------------------------- */
+
+type CategoryRow = { id: string; name: string; slug: string; active: boolean; books: number };
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
 
 export function CategoriesAdmin() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string; slug: string } | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const categories = useQuery({
     queryKey: ["admin-categories-full"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, name, slug, active")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as { id: string; name: string; slug: string; active: boolean }[];
+      const [catRes, bookRes] = await Promise.all([
+        supabase.from("categories").select("id, name, slug, active").order("name"),
+        supabase.from("books").select("category_id").limit(5000),
+      ]);
+      if (catRes.error) throw catRes.error;
+      const tally = new Map<string, number>();
+      for (const b of (bookRes.data ?? []) as { category_id: string | null }[]) {
+        if (b.category_id) tally.set(b.category_id, (tally.get(b.category_id) ?? 0) + 1);
+      }
+      return ((catRes.data ?? []) as Omit<CategoryRow, "books">[]).map((c) => ({
+        ...c,
+        books: tally.get(c.id) ?? 0,
+      }));
     },
   });
+
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ["admin-categories-full"] });
+    void qc.invalidateQueries({ queryKey: ["admin-categories"] });
+    void qc.invalidateQueries({ queryKey: ["categories"] });
+    void qc.invalidateQueries({ queryKey: ["admin-books"] });
+  };
 
   const create = useMutation({
     mutationFn: async () => {
       const trimmed = name.trim();
       if (trimmed.length < 2) throw new Error("Informe um nome válido");
-      const slug = trimmed
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
       const { error } = await supabase
         .from("categories")
-        .insert({ name: trimmed, slug, icon: "BookOpen" });
+        .insert({ name: trimmed, slug: slugify(trimmed), icon: "BookOpen" });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Categoria criada.");
       setName("");
-      void qc.invalidateQueries({ queryKey: ["admin-categories-full"] });
-      void qc.invalidateQueries({ queryKey: ["categories"] });
+      refresh();
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível criar a categoria."),
   });
 
+  const save = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const trimmed = editing.name.trim();
+      if (trimmed.length < 2) throw new Error("Informe um nome válido");
+      const { error } = await supabase
+        .from("categories")
+        .update({ name: trimmed, slug: slugify(editing.slug || trimmed) })
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Categoria atualizada.");
+      setEditing(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível salvar a categoria."),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("delete_category_reassign", { _id: id });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Categoria excluída. Os livros foram movidos para “Sem Categoria”.");
+      setConfirmId(null);
+      refresh();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível excluir a categoria."),
+  });
+
   return (
-    <Card title="Categorias">
+    <Card title="Categorias / Prateleiras">
       <div className="flex flex-wrap gap-3">
         <input
           className={`${input} flex-1`}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nova categoria"
+          placeholder="Nova categoria / prateleira"
         />
         <button onClick={() => create.mutate()} className={primaryBtn}>
           <Plus className="size-4" /> Adicionar
         </button>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {categories.data?.map((c) => (
-          <span
-            key={c.id}
-            className="rounded-full bg-secondary px-3 py-1.5 text-xs font-medium text-primary"
-          >
-            {c.name}
-          </span>
-        ))}
+
+      <div className="mt-4 grid gap-2">
+        {categories.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
+        {categories.data?.map((c) => {
+          const system = c.slug === "sem-categoria";
+          return (
+            <div key={c.id} className="rounded-2xl border border-border bg-background px-4 py-3">
+              {editing?.id === c.id ? (
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                  <input
+                    className={input}
+                    value={editing.name}
+                    onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    placeholder="Nome"
+                  />
+                  <input
+                    className={input}
+                    value={editing.slug}
+                    onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                    placeholder="Slug"
+                  />
+                  <div className="flex gap-2">
+                    <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate()}>
+                      {save.isPending && <Loader2 className="size-4 animate-spin" />} Salvar
+                    </button>
+                    <button className={ghostBtn} onClick={() => setEditing(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {c.name}
+                      {system && (
+                        <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-primary">
+                          categoria do sistema
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      /{c.slug} · {c.books} livro(s)
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!system && (
+                      <button
+                        className={ghostBtn}
+                        onClick={() => setEditing({ id: c.id, name: c.name, slug: c.slug })}
+                      >
+                        <Pencil className="size-3" /> Editar
+                      </button>
+                    )}
+                    {!system &&
+                      (confirmId === c.id ? (
+                        <>
+                          <button
+                            className={ghostBtn}
+                            disabled={remove.isPending}
+                            onClick={() => remove.mutate(c.id)}
+                          >
+                            {remove.isPending ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              <Check className="size-3" />
+                            )}
+                            Confirmar ({c.books} livro(s) para “Sem Categoria”)
+                          </button>
+                          <button className={ghostBtn} onClick={() => setConfirmId(null)}>
+                            <X className="size-3" /> Cancelar
+                          </button>
+                        </>
+                      ) : (
+                        <button className={ghostBtn} onClick={() => setConfirmId(c.id)}>
+                          <Trash2 className="size-3" /> Excluir
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
 }
+
 
 /* --------------------------------- Dashboard ------------------------------- */
 

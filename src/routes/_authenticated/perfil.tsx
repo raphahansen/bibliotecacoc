@@ -189,34 +189,37 @@ function ProfilePage() {
                 {profile?.full_name || "Leitor(a)"}
               </h1>
             </div>
-            <button
-              onClick={() => {
-                if (editing) {
-                  void saveProfile();
-                } else {
-                  setForm({
-                    full_name: profile?.full_name || "",
-                    matricula: profile?.matricula || "",
-                    grade: profile?.grade || "",
-                  });
-                  setEditing(true);
-                }
-              }}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-60"
-            >
-              {saving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : editing ? (
-                <Save className="size-4" />
-              ) : (
-                <Pencil className="size-4" />
-              )}
-              {editing ? (saving ? "Salvando…" : "Salvar") : "Editar perfil"}
-            </button>
+            {isStaff && (
+              <button
+                onClick={() => {
+                  if (editing) {
+                    void saveProfile();
+                  } else {
+                    setForm({
+                      full_name: profile?.full_name || "",
+                      matricula: profile?.matricula || "",
+                      grade: profile?.grade || "",
+                    });
+                    setEditing(true);
+                  }
+                }}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-60"
+              >
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : editing ? (
+                  <Save className="size-4" />
+                ) : (
+                  <Pencil className="size-4" />
+                )}
+                {editing ? (saving ? "Salvando…" : "Salvar") : "Editar perfil"}
+              </button>
+            )}
           </div>
 
-          {editing ? (
+          {isStaff && editing ? (
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Nome completo</label>
