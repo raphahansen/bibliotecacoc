@@ -1,7 +1,19 @@
-import { Award, Star, BookOpen, Instagram } from "lucide-react";
-import { readerOfMonth } from "@/data/library";
+import { Award, Star, BookOpen, Instagram, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchReaderOfMonth } from "@/lib/library";
 
 export function ReaderOfMonth() {
+  const readerQuery = useQuery({
+    queryKey: ["reader-of-month"],
+    queryFn: fetchReaderOfMonth,
+  });
+
+  const reader = readerQuery.data;
+  const month = new Date().toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric",
+  });
+
   return (
     <section id="leitor-do-mes" className="bg-secondary/60 py-16">
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
@@ -28,42 +40,62 @@ export function ReaderOfMonth() {
           <span className="absolute right-6 top-6 grid size-12 place-items-center rounded-full bg-[image:var(--gradient-gold)] text-accent-foreground">
             <Award className="size-6" />
           </span>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {readerOfMonth.month}
-          </p>
-          <h3 className="mt-1 font-display text-2xl text-primary">
-            {readerOfMonth.name}
-          </h3>
-          <p className="text-sm text-muted-foreground">{readerOfMonth.grade}</p>
 
-          <div className="mt-4 flex gap-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star key={i} className="size-4 fill-gold text-gold" />
-            ))}
-          </div>
-
-          <p className="mt-4 text-sm italic text-foreground/85">
-            “{readerOfMonth.quote}”
-          </p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-secondary/70 p-4">
-              <p className="font-display text-2xl text-primary">
-                {readerOfMonth.booksRead}
+          {readerQuery.isLoading ? (
+            <div className="flex items-center gap-3 py-8 text-muted-foreground">
+              <Loader2 className="size-5 animate-spin" /> Carregando…
+            </div>
+          ) : reader ? (
+            <>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                {month}
               </p>
-              <p className="text-xs text-muted-foreground">
-                livros lidos em {readerOfMonth.month}
+              <h3 className="mt-1 font-display text-2xl text-primary">
+                {reader.full_name}
+              </h3>
+              {reader.grade && (
+                <p className="text-sm text-muted-foreground">{reader.grade}</p>
+              )}
+
+              <div className="mt-4 flex gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="size-4 fill-gold text-gold" />
+                ))}
+              </div>
+
+              <p className="mt-4 text-sm italic text-foreground/85">
+                “Leitura é a porta de entrada para novos mundos.”
+              </p>
+
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-secondary/70 p-4">
+                  <p className="font-display text-2xl text-primary">
+                    {reader.books_read}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    livros lidos em {month}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-secondary/70 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <BookOpen className="size-4" /> Leitor destaque
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Parabéns pela dedicação à leitura!
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Ainda não há leituras registradas neste mês.
+              </p>
+              <p className="mt-2 text-sm font-semibold text-primary">
+                Seja o próximo leitor do mês!
               </p>
             </div>
-            <div className="rounded-2xl bg-secondary/70 p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-primary">
-                <BookOpen className="size-4" /> Favorito
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {readerOfMonth.favorite}
-              </p>
-            </div>
-          </div>
+          )}
         </article>
       </div>
     </section>

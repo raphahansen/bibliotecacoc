@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BookOpen, CalendarClock, Star, LogOut, Loader2, Shield } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, CalendarClock, Star, LogOut, Loader2, Shield, Save, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -58,10 +59,38 @@ function Panel({
 }
 
 function ProfilePage() {
-  const { profile, user, role, isStaff, signOut } = useAuth();
+  const { profile, user, role, isStaff, signOut, refresh } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userId = user?.id;
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    full_name: profile?.full_name || "",
+    matricula: profile?.matricula || "",
+    grade: profile?.grade || "",
+  });
+
+  const saveProfile = async () => {
+    if (!userId) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: form.full_name.trim(),
+        matricula: form.matricula.trim() || null,
+        grade: form.grade.trim() || null,
+      })
+      .eq("id", userId);
+    setSaving(false);
+    if (error) {
+      toast.error("Não foi possível salvar as alterações.");
+      return;
+    }
+    toast.success("Perfil atualizado.");
+    setEditing(false);
+    await refresh();
+  };
 
   const reservations = useQuery({
     queryKey: ["my-reservations", userId],
@@ -151,30 +180,93 @@ function ProfilePage() {
       <SiteHeader />
       <main className="mx-auto max-w-5xl px-4 pb-20 pt-28 lg:px-8">
         <header className="rounded-3xl border border-border bg-[image:var(--gradient-hero)] p-6 shadow-[var(--shadow-card)] sm:p-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            Minha conta
-          </p>
-          <h1 className="mt-1 font-display text-3xl text-primary">
-            {profile?.full_name || "Leitor(a)"}
-          </h1>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-secondary px-3 py-1 text-primary">
-              {role ? roleLabels[role] : "Aluno"}
-            </span>
-            {profile?.matricula && (
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                Matrícula {profile.matricula}
-              </span>
-            )}
-            {profile?.grade && (
-              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                {profile.grade}
-              </span>
-            )}
-            <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-              {profile?.email || user?.email}
-            </span>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Minha conta
+              </p>
+              <h1 className="mt-1 font-display text-3xl text-primary">
+                {profile?.full_name || "Leitor(a)"}
+              </h1>
+            </div>
+            <button
+              onClick={() => {
+                if (editing) {
+                  void saveProfile();
+                } else {
+                  setForm({
+                    full_name: profile?.full_name || "",
+                    matricula: profile?.matricula || "",
+                    grade: profile?.grade || "",
+                  });
+                  setEditing(true);
+                }
+              }}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-primary hover:bg-secondary disabled:opacity-60"
+            >
+              {saving ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : editing ? (
+                <Save className="size-4" />
+              ) : (
+                <Pencil className="size-4" />
+              )}
+              {editing ? (saving ? "Salvando…" : "Salvar") : "Editar perfil"}
+            </button>
           </div>
+
+          {editing ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Nome completo</label>
+                <input
+                  value={form.full_name}
+                  onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                  className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary-soft"
+                  maxLength={120}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Matrícula</label>
+                <input
+                  value={form.matricula}
+                  onChange={(e) => setForm((f) => ({ ...f, matricula: e.target.value }))}
+                  className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary-soft"
+                  maxLength={40}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Turma / Série</label>
+                <input
+                  value={form.grade}
+                  onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
+                  className="mt-1 w-full rounded-2xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary-soft"
+                  maxLength={40}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full bg-secondary px-3 py-1 text-primary">
+                {role ? roleLabels[role] : "Aluno"}
+              </span>
+              {profile?.matricula && (
+                <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
+                  Matrícula {profile.matricula}
+                </span>
+              )}
+              {profile?.grade && (
+                <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
+                  {profile.grade}
+                </span>
+              )}
+              <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
+                {profile?.email || user?.email}
+              </span>
+            </div>
+          )}
+
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               to="/acervo"

@@ -7,7 +7,9 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   createReservation,
   fetchBookReviews,
+  fetchMyReservations,
   levelLabel,
+  reservationLabels,
   upsertReview,
   type DbBook,
 } from "@/lib/library";
@@ -56,11 +58,22 @@ export function BookDetailDialog({
     queryFn: () => fetchBookReviews(book.id),
   });
 
+  const myReservationsQuery = useQuery({
+    queryKey: ["my-reservations", user?.id, book.id],
+    enabled: !!user,
+    queryFn: async () => {
+      if (!user) return [];
+      const all = await fetchMyReservations(user.id);
+      return all.filter((r) => r.book_id === book.id);
+    },
+  });
+
   const reserve = useMutation({
     mutationFn: () => createReservation(user!.id, book.id),
     onSuccess: () => {
       toast.success("Reserva registrada! Acompanhe em Meu perfil.");
       queryClient.invalidateQueries({ queryKey: ["my-reservations"] });
+      void myReservationsQuery.refetch();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -83,6 +96,13 @@ export function BookDetailDialog({
       ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
       : null;
   const available = book.available_copies > 0;
+  const myActiveReservation = (myReservationsQuery.data ?? [])[0];
+
+  const reserveLabel = myActiveReservation
+    ? `Você já reservou este título (${reservationLabels[myActiveReservation.status]})`
+    : available
+      ? "Reservar este livro"
+      : "Entrar na fila de espera";
 
   return (
     <div
@@ -149,12 +169,17 @@ export function BookDetailDialog({
             <div className="space-y-5">
               <button
                 onClick={() => reserve.mutate()}
-                disabled={reserve.isPending || !available}
+                disabled={reserve.isPending || !!myActiveReservation}
                 className="inline-flex items-center gap-2 rounded-full bg-[image:var(--gradient-gold)] px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.03] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
               >
                 {reserve.isPending && <Loader2 className="size-4 animate-spin" />}
-                {available ? "Reservar este livro" : "Indisponível para reserva"}
+                {reserveLabel}
               </button>
+              {!available && !myActiveReservation && (
+                <p className="text-xs text-muted-foreground">
+                  Quando um exemplar for devolvido, você será avisado por ordem de chegada.
+                </p>
+              )}
 
               <div>
                 <p className="text-sm font-semibold text-primary">Sua avaliação</p>

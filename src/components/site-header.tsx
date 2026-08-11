@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Search, LogIn, UserRound, Menu, X } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { Search, LogIn, UserRound, Menu, X, LogOut, Shield } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import logo from "@/assets/logo-novomundo-coc.png.asset.json";
+import { useAuth } from "@/hooks/use-auth";
 
 const links = [
   { label: "Início", href: "/#inicio" },
@@ -10,18 +11,24 @@ const links = [
   { label: "Destaques", href: "/#destaques" },
   { label: "Clube Leitor", href: "/#clube" },
   { label: "Leitor do Mês", href: "/#leitor-do-mes" },
-  
 ];
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [term, setTerm] = useState("");
   const navigate = useNavigate();
+  const { user, isStaff, signOut } = useAuth();
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setOpen(false);
     navigate({ to: "/acervo", search: { q: term.trim(), nivel: "" } });
+  };
+
+  const handleSignOut = async () => {
+    setOpen(false);
+    await signOut();
+    void navigate({ to: "/", replace: true });
   };
 
   return (
@@ -57,15 +64,47 @@ export function SiteHeader() {
         </form>
 
         <div className="flex items-center gap-2">
-          <button className="hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-secondary sm:inline-flex">
-            <LogIn className="size-4" /> Entrar
-          </button>
-          <button
-            aria-label="Perfil"
-            className="grid size-10 place-items-center rounded-full bg-[image:var(--gradient-gold)] text-accent-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-105"
-          >
-            <UserRound className="size-5" />
-          </button>
+          {user ? (
+            <>
+              <Link
+                to="/perfil"
+                className="hidden items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-secondary sm:inline-flex"
+              >
+                <UserRound className="size-4" /> Perfil
+              </Link>
+              {isStaff && (
+                <Link
+                  to="/admin"
+                  className="hidden items-center gap-2 rounded-full bg-[image:var(--gradient-gold)] px-4 py-2 text-sm font-semibold text-accent-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.02] sm:inline-flex"
+                >
+                  <Shield className="size-4" /> Admin
+                </Link>
+              )}
+              <button
+                onClick={handleSignOut}
+                aria-label="Sair"
+                className="grid size-10 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+              >
+                <LogOut className="size-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/auth"
+                className="hidden items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] sm:inline-flex"
+              >
+                <LogIn className="size-4" /> Entrar
+              </Link>
+              <Link
+                to="/auth"
+                aria-label="Entrar"
+                className="grid size-10 place-items-center rounded-full bg-[image:var(--gradient-gold)] text-accent-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-105 sm:hidden"
+              >
+                <UserRound className="size-5" />
+              </Link>
+            </>
+          )}
           <button
             aria-label="Abrir menu"
             onClick={() => setOpen((v) => !v)}
@@ -113,9 +152,40 @@ export function SiteHeader() {
                 {l.label}
               </a>
             ))}
-            <button className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">
-              <LogIn className="size-4" /> Entrar
-            </button>
+            {user ? (
+              <>
+                <Link
+                  to="/perfil"
+                  onClick={() => setOpen(false)}
+                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  Meu perfil
+                </Link>
+                {isStaff && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    Painel administrativo
+                  </Link>
+                )}
+                <button
+                  onClick={handleSignOut}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                >
+                  <LogOut className="size-4" /> Sair
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/auth"
+                onClick={() => setOpen(false)}
+                className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
+              >
+                <LogIn className="size-4" /> Entrar
+              </Link>
+            )}
           </nav>
         </div>
       )}

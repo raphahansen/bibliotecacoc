@@ -311,20 +311,22 @@ export type MyReservation = {
   id: string;
   book_id: string;
   status: ReservationStatus;
+  queue_position: number | null;
   created_at: string;
 };
 
 export async function fetchMyReservations(userId: string) {
   const { data, error } = await supabase
     .from("reservations")
-    .select("id, book_id, status, created_at")
+    .select("id, book_id, status, queue_position, created_at")
     .eq("user_id", userId)
     .in("status", ["pendente", "aprovada", "disponivel"]);
   if (error) throw error;
   return (data ?? []) as MyReservation[];
 }
 
-/** Cria uma reserva evitando duplicidade para o mesmo leitor/livro. */
+/** Cria uma reserva evitando duplicidade para o mesmo leitor/livro.
+ *  Se não houver exemplar disponível, entra na fila com queue_position. */
 export async function createReservation(userId: string, bookId: string) {
   const { data: existing, error: checkError } = await supabase
     .from("reservations")
@@ -336,9 +338,37 @@ export async function createReservation(userId: string, bookId: string) {
   if (checkError) throw checkError;
   if (existing) throw new Error("Você já tem uma reserva ativa para este título.");
 
-  const { error } = await supabase
+  const { data: book, error: bookError } = await supabase
+    .from("books")
+    .select("available_copies")
+    .eq("id", bookId)
+    .single();
+  if (bookError) throw bookError;
+
+  const available = (book as { available_copies: number }).available_copies;
+
+  if (available > 0) {
+    const { error } = await supabase
+      .from("reservations")
+      .insert({ user_id: userId, book_id: bookId, status: "pendente" });
+    if (error) throw error;
+    return;
+  }
+
+  const { count, error: countError } = await supabase
     .from("reservations")
-    .insert({ user_id: userId, book_id: bookId, status: "pendente" });
+    .select("id", { count: "exact", head: true })
+    .eq("book_id", bookId)
+    .in("status", ["pendente", "aprovada"]);
+  if (countError) throw countError;
+
+  const position = (count ?? 0) + 1;
+  const { error } = await supabase.from("reservations").insert({
+    user_id: userId,
+    book_id: bookId,
+    status: "pendente",
+    queue_position: position,
+  });
   if (error) throw error;
 }
 
@@ -385,4 +415,52 @@ export async function fetchLatestReviewsWithBooks(limit = 6) {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as unknown as LatestReview[];
+}
+
+export type ReaderOfMonth = {
+  user_id: string;
+  full_name: string;
+  grade: string | null;
+  books_read: number;
+  month: string;
+};
+
+export async function fetchReaderOfMonth(): Promise<ReaderOfMonth | null> {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from("loans")
+    .select("user_id, profiles(full_name, grade)")
+    .gte("loan_date", start.toISOString())
+    .in("status", ["devolvido", "ativo", "atrasado"]);
+  if (error) throw error;
+
+  const counts = new Map<string, { count: number; full_name: string; grade: string | null }>();
+  for (const row of (data ?? []) as unknown as {
+    user_id: string;
+    profiles: { full_name: string; grade: string | null } | null;
+  }[]) {
+    const current = counts.get(row.user_id) ?? {
+      count: 0,
+      full_name: row.profiles?.full_name || "Leitor(a)",
+      grade: row.profiles?.grade ?? null,
+    };
+    current.count += 1;
+    counts.set(row.user_id, current);
+  }
+
+  let best: ReaderOfMonth | null = null;
+  counts.forEach((value, user_id) => {
+    if (!best || value.count > best.books_read) {
+      best = {
+        user_id,
+        full_name: value.full_name,
+        grade: value.grade,
+        books_read: value.count,
+        month: start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+      };
+    }
+  });
+  return best;
 }
