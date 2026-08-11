@@ -382,19 +382,16 @@ export async function upsertReview(
   rating: number,
   comment: string,
 ) {
-  const { data: existing, error: checkError } = await supabase
-    .from("reviews")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("book_id", bookId)
-    .maybeSingle();
+  const { data: existingId, error: checkError } = await supabase.rpc("get_my_review_id", {
+    _book_id: bookId,
+  });
   if (checkError) throw checkError;
 
-  if (existing) {
+  if (existingId) {
     const { error } = await supabase
       .from("reviews")
       .update({ rating, comment })
-      .eq("id", existing.id);
+      .eq("id", existingId);
     if (error) throw error;
     return;
   }

@@ -136,13 +136,15 @@ function ProfilePage() {
     queryKey: ["my-reviews", userId],
     enabled: !!userId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("id, rating, comment, created_at, books(title, author)")
-        .eq("user_id", userId!)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc("list_my_reviews");
       if (error) throw error;
-      return (data ?? []) as unknown as {
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        created_at: r.created_at,
+        books: { title: r.book_title, author: r.book_author },
+      })) as unknown as {
         id: string;
         rating: number;
         comment: string;

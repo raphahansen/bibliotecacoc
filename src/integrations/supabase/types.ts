@@ -453,7 +453,21 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_list_reviews: {
+        Args: { _limit?: number }
+        Returns: {
+          book_author: string
+          book_title: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          reviewer_email: string
+          reviewer_name: string
+        }[]
+      }
       delete_category_reassign: { Args: { _id: string }; Returns: undefined }
+      get_my_review_id: { Args: { _book_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -463,6 +477,18 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       library_maintenance: { Args: never; Returns: Json }
+      list_my_reviews: {
+        Args: never
+        Returns: {
+          book_author: string
+          book_id: string
+          book_title: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+        }[]
+      }
       next_asset_code: { Args: never; Returns: string }
       register_checkout: {
         Args: { _copy_id: string; _reservation_id?: string; _user_id: string }
