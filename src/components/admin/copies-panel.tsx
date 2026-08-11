@@ -417,12 +417,18 @@ export function BookCopiesManager({ bookId, title }: { bookId: string; title: st
 export function CopiesAdmin() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
+  const [sort, setSort] = useState("asset_code");
+  const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
   const [bookQuery, setBookQuery] = useState("");
   const [bookId, setBookId] = useState("");
 
+  useEffect(() => {
+    setPage(0);
+  }, [q, status]);
+
   const copies = useQuery({
-    queryKey: ["admin-copies", q, status],
+    queryKey: ["admin-copies", q, status, sort, page],
     queryFn: async () => {
       const term = q.trim().replace(/[,%()]/g, " ");
       let bookIds: string[] = [];
@@ -431,11 +437,11 @@ export function CopiesAdmin() {
           .from("books")
           .select("id")
           .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
-          .limit(60);
+          .limit(200);
         bookIds = (books ?? []).map((b) => b.id);
       }
 
-      let query = supabase.from("book_copies").select(copySelect).order("asset_code").limit(60);
+      let query = supabase.from("book_copies").select(copySelect, { count: "exact" });
 
       if (status) query = query.eq("status", status);
       if (term) {
@@ -444,11 +450,19 @@ export function CopiesAdmin() {
         query = query.or(filters.join(","));
       }
 
-      const { data, error } = await query;
+      if (sort === "recent") query = query.order("created_at", { ascending: false });
+      else if (sort === "status") query = query.order("status").order("asset_code");
+      else query = query.order("asset_code");
+
+      const { data, error, count } = await query.range(
+        page * COPIES_PAGE_SIZE,
+        page * COPIES_PAGE_SIZE + COPIES_PAGE_SIZE - 1,
+      );
       if (error) throw error;
-      return (data ?? []) as unknown as CopyRow[];
+      return { total: count ?? 0, rows: (data ?? []) as unknown as CopyRow[] };
     },
   });
+
 
   const bookOptions = useQuery({
     queryKey: ["admin-copies-books", bookQuery],
