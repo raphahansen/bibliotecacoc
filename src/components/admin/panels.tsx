@@ -646,12 +646,17 @@ export function LoansAdmin() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_copies")
-        .select("id, asset_code")
+        .select("id, asset_code, condition, location")
         .eq("book_id", form.book_id)
         .eq("status", "disponivel")
         .order("asset_code");
       if (error) throw error;
-      return (data ?? []) as { id: string; asset_code: string }[];
+      return (data ?? []) as {
+        id: string;
+        asset_code: string;
+        condition: string;
+        location: string;
+      }[];
     },
     enabled: creating && !!form.book_id,
   });
