@@ -64,21 +64,19 @@ export function BookSelector({
     queryKey: ["book-selector", debounced, onlyAvailable, pages],
     enabled: open,
     queryFn: async () => {
-      const safe = debounced.trim().replace(/[,%()]/g, " ");
-      let query = supabase
-        .from("books")
-        .select("id, title, author, total_copies, available_copies", { count: "exact" })
-        .eq("active", true);
-      if (onlyAvailable) query = query.gt("available_copies", 0);
-      if (safe) query = query.or(`title.ilike.%${safe}%,author.ilike.%${safe}%`);
-      const { data, error, count } = await query
-        .order("title")
-        .range(0, pages * PAGE_SIZE - 1);
+      const { data, error } = await supabase.rpc("search_books", {
+        _term: debounced.trim(),
+        _only_available: onlyAvailable,
+        _limit: pages * PAGE_SIZE,
+        _offset: 0,
+      });
       if (error) throw error;
-      return { rows: (data ?? []) as SelectableBook[], total: count ?? 0 };
+      const rows = (data ?? []) as (SelectableBook & { total_count: number })[];
+      return { rows: rows as SelectableBook[], total: Number(rows[0]?.total_count ?? 0) };
     },
     placeholderData: (prev) => prev,
   });
+
 
   const rows = results.data?.rows ?? [];
   const total = results.data?.total ?? 0;
