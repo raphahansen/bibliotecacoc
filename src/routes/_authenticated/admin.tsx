@@ -111,6 +111,7 @@ function AdminPage() {
           {tab === "Exemplares" && <CopiesAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
+          {tab === "Avaliações" && <ReviewsAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
           {tab === "Categorias" && <CategoriesAdmin />}
         </div>
