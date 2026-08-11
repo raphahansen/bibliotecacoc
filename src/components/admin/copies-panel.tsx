@@ -210,13 +210,12 @@ function CopyRowItem({
   };
 
   const save = useMutation({
-    mutationFn: async (patch: Partial<EditState>) => {
+    mutationFn: async () => {
       const body = {
-        asset_code: (patch.asset_code ?? edit.asset_code).trim(),
-        status: patch.status ?? edit.status,
-        condition: patch.condition ?? edit.condition,
-        location: (patch.location ?? edit.location).trim() || "Biblioteca",
-        notes: (patch.notes ?? edit.notes).trim(),
+        asset_code: edit.asset_code.trim(),
+        condition: edit.condition,
+        location: edit.location.trim() || "Biblioteca",
+        notes: edit.notes.trim(),
       };
       if (body.asset_code.length < 2) throw new Error("Código inválido");
       const { error } = await supabase.from("book_copies").update(body).eq("id", copy.id);
@@ -231,6 +230,19 @@ function CopyRowItem({
       toast.error(
         e.message.includes("duplicate") ? "Já existe um exemplar com esse código." : "Não foi possível salvar.",
       ),
+  });
+
+  const writeOff = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("write_off_copy", { _copy_id: copy.id });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Exemplar baixado.");
+      setEditing(false);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível dar baixa."),
   });
 
   const locked = copy.status === "emprestado";
