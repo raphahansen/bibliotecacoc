@@ -30,7 +30,7 @@ export function SiteFooter() {
           <h3 className="font-display text-base text-gold-soft">Horário de funcionamento</h3>
           <ul className="mt-4 space-y-2 text-sm text-primary-foreground/75">
             <li className="flex items-center gap-2">
-              <Clock className="size-4 shrink-0 text-gold" /> Seg a Sex · 07h30 – 18h00
+              <Clock className="size-4 shrink-0 text-gold" /> Seg a Sex · 09h30 – 10h50
             </li>
             <li className="flex items-center gap-2">
               <Clock className="size-4 shrink-0 text-gold" /> Sábado · 08h00 – 12h00
