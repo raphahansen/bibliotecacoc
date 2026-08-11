@@ -737,7 +737,7 @@ export function LoansAdmin() {
             <select
               className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
               value={form.book_id}
-              onChange={(e) => setForm({ ...form, book_id: e.target.value })}
+              onChange={(e) => setForm({ ...form, book_id: e.target.value, copy_id: "" })}
             >
               <option value="">Selecione um livro</option>
               {books.data?.map((b) => {
@@ -751,6 +751,27 @@ export function LoansAdmin() {
               })}
             </select>
           </div>
+          <div className="min-w-0 sm:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              Exemplar (código de patrimônio)
+            </label>
+            <select
+              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+              value={form.copy_id}
+              disabled={!form.book_id}
+              onChange={(e) => setForm({ ...form, copy_id: e.target.value })}
+            >
+              <option value="">
+                {form.book_id ? "Selecione o exemplar" : "Escolha um livro primeiro"}
+              </option>
+              {copies.data?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.asset_code}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-2 sm:col-span-2">
             <button
               onClick={() => create.mutate()}
