@@ -49,10 +49,22 @@ export function BookDetailDialog({
   book: DbBook;
   onClose: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, isStaff } = useAuth();
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+
+  const removeReview = useMutation({
+    mutationFn: (id: string) => deleteReview(id),
+    onSuccess: () => {
+      toast.success("Avaliação excluída.");
+      queryClient.invalidateQueries({ queryKey: ["book-reviews", book.id] });
+      queryClient.invalidateQueries({ queryKey: ["latest-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const reviewsQuery = useQuery({
     queryKey: ["book-reviews", book.id],
