@@ -714,7 +714,7 @@ export function LoansAdmin() {
           <div>
             <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
             <select
-              className={`${input} truncate`}
+              className={input}
               value={form.book_id}
               onChange={(e) => setForm({ ...form, book_id: e.target.value })}
             >
