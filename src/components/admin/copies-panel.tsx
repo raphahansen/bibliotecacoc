@@ -450,7 +450,7 @@ export function CopiesAdmin() {
           .from("books")
           .select("id")
           .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
-          .limit(200);
+          .limit(2000);
         bookIds = (books ?? []).map((b) => b.id);
       }
 
