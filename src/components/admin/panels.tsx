@@ -653,50 +653,39 @@ export function LoansAdmin() {
     enabled: creating,
   });
 
+  const copies = useQuery({
+    queryKey: ["admin-loan-copies", form.book_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select("id, asset_code")
+        .eq("book_id", form.book_id)
+        .eq("status", "disponivel")
+        .order("asset_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; asset_code: string }[];
+    },
+    enabled: creating && !!form.book_id,
+  });
+
   const create = useMutation({
     mutationFn: async () => {
       if (!form.user_id || !form.book_id) throw new Error("Selecione leitor e livro");
-      const { data: setting } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "loan_days")
-        .maybeSingle();
-      const days = Number((setting as { value: string } | null)?.value ?? 15);
-      const due = new Date();
-      due.setDate(due.getDate() + days);
-
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("available_copies")
-        .eq("id", form.book_id)
-        .single();
-      if (bookError) throw bookError;
-      if ((book as { available_copies: number }).available_copies < 1) {
-        throw new Error("Sem exemplares disponíveis");
-      }
-
-      const { error: loanError } = await supabase.from("loans").insert({
-        user_id: form.user_id,
-        book_id: form.book_id,
-        due_date: due.toISOString().slice(0, 10),
-        status: "ativo",
+      if (!form.copy_id) throw new Error("Selecione o exemplar");
+      const { error } = await supabase.rpc("register_checkout", {
+        _user_id: form.user_id,
+        _copy_id: form.copy_id,
       });
-      if (loanError) throw loanError;
-
-      await supabase
-        .from("books")
-        .update({
-          available_copies: (book as { available_copies: number }).available_copies - 1,
-        })
-        .eq("id", form.book_id);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Empréstimo registrado no balcão.");
       setCreating(false);
-      setForm({ user_id: "", book_id: "" });
+      setForm({ user_id: "", book_id: "", copy_id: "" });
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
+
     onError: (e: Error) => toast.error(e.message || "Não foi possível registrar o empréstimo."),
   });
 
