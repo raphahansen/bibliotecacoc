@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      book_copies: {
+        Row: {
+          asset_code: string
+          book_id: string
+          condition: string
+          created_at: string
+          id: string
+          notes: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          asset_code: string
+          book_id: string
+          condition?: string
+          created_at?: string
+          id?: string
+          notes?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          asset_code?: string
+          book_id?: string
+          condition?: string
+          created_at?: string
+          id?: string
+          notes?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_copies_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           active: boolean
