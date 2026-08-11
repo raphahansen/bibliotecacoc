@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
+import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+
 
 const COPIES_PAGE_SIZE = 20;
 
