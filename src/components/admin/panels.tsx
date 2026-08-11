@@ -795,13 +795,8 @@ export function LoansAdmin() {
                 {!l.returned_at && (
                   <button
                     className={ghostBtn}
-                    onClick={() =>
-                      giveBack.mutate({
-                        id: l.id,
-                        book_id: l.book_id,
-                        available: l.books?.available_copies ?? 0,
-                      })
-                    }
+                    onClick={() => giveBack.mutate({ id: l.id })}
+
                   >
                     <RotateCcw className="size-3" /> Devolver
                   </button>
