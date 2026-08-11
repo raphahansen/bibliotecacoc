@@ -467,6 +467,7 @@ export type Database = {
         }[]
       }
       delete_category_reassign: { Args: { _id: string }; Returns: undefined }
+      f_unaccent: { Args: { "": string }; Returns: string }
       get_my_review_id: { Args: { _book_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -497,6 +498,22 @@ export type Database = {
       register_return: {
         Args: { _copy_status?: string; _loan_id: string }
         Returns: undefined
+      }
+      search_books: {
+        Args: {
+          _limit?: number
+          _offset?: number
+          _only_available?: boolean
+          _term?: string
+        }
+        Returns: {
+          author: string
+          available_copies: number
+          id: string
+          title: string
+          total_copies: number
+          total_count: number
+        }[]
       }
       sync_book_availability: { Args: { _book_id: string }; Returns: undefined }
       write_off_copy: {
