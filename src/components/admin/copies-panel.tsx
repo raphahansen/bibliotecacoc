@@ -430,8 +430,9 @@ export function CopiesAdmin() {
   const [sort, setSort] = useState("asset_code");
   const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
-  const [bookQuery, setBookQuery] = useState("");
-  const [bookId, setBookId] = useState("");
+  const [book, setBook] = useState<SelectableBook | null>(null);
+  const bookId = book?.id ?? "";
+
 
   useEffect(() => {
     setPage(0);
