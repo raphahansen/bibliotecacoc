@@ -128,20 +128,26 @@ function NewCopyForm({
         Gerar código de patrimônio automaticamente
       </label>
       {state.autoCode ? (
-        <input
-          type="number"
-          min={1}
-          max={100}
-          value={state.quantity}
-          onChange={(e) => setState({ ...state, quantity: Number(e.target.value) })}
-          placeholder="Quantidade de exemplares"
-          className={input}
-        />
+        <label className="flex flex-col gap-1 text-sm text-foreground md:col-span-2">
+          <span className="font-medium">Quantos exemplares criar?</span>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={state.quantity}
+            onChange={(e) => setState({ ...state, quantity: Number(e.target.value) })}
+            placeholder="Quantidade de exemplares"
+            className={input}
+          />
+          <span className="text-xs text-muted-foreground">
+            Serão criados {state.quantity || 1} exemplar(es) com códigos sequenciais gerados automaticamente (ex.: BIB-000001).
+          </span>
+        </label>
       ) : (
         <input
           value={state.asset_code}
           onChange={(e) => setState({ ...state, asset_code: e.target.value })}
-          placeholder="Código patrimonial (ex.: PAT-001234)"
+          placeholder="Código patrimonial (ex.: BIB-001234)"
           className={input}
         />
       )}
