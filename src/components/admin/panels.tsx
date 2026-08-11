@@ -690,17 +690,11 @@ export function LoansAdmin() {
   });
 
   const giveBack = useMutation({
-    mutationFn: async (l: { id: string; book_id: string; available: number }) => {
-      const { error } = await supabase
-        .from("loans")
-        .update({ status: "devolvido", returned_at: new Date().toISOString() })
-        .eq("id", l.id);
-      if (error) throw error;
-      await supabase
-        .from("books")
-        .update({ available_copies: l.available + 1 })
-        .eq("id", l.book_id);
+    mutationFn: async (l: { id: string }) => {
+      const { error } = await supabase.rpc("register_return", { _loan_id: l.id });
+      if (error) throw new Error(error.message);
     },
+
     onSuccess: () => {
       toast.success("Devolução registrada.");
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
