@@ -714,13 +714,13 @@ export function LoansAdmin() {
           <div>
             <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
             <select
-              className={input}
+              className={`${input} truncate`}
               value={form.book_id}
               onChange={(e) => setForm({ ...form, book_id: e.target.value })}
             >
               <option value="">Selecione um livro</option>
               {books.data?.map((b) => (
-                <option key={b.id} value={b.id}>
+                <option key={b.id} value={b.id} className="truncate">
                   {b.title} — {b.author} ({b.available_copies} disp.)
                 </option>
               ))}
