@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 const tabs = [
   "Visão geral",
   "Livros",
-  "Exemplares",
+  "Inventário de exemplares",
   "Reservas",
   "Empréstimos",
   "Avaliações",
@@ -108,7 +108,7 @@ function AdminPage() {
         <div className="mt-6 grid gap-5">
           {tab === "Visão geral" && <DashboardAdmin />}
           {tab === "Livros" && <BooksAdmin />}
-          {tab === "Exemplares" && <CopiesAdmin />}
+          {tab === "Inventário de exemplares" && <CopiesAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
           {tab === "Avaliações" && <ReviewsAdmin />}
