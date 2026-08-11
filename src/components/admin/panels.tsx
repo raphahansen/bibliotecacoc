@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, RotateCcw, BookOpen, UserRound } from "lucide-react";
+import { Loader2, Search, Plus, Check, X, RotateCcw, BookOpen, UserRound, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -12,6 +12,8 @@ import {
   type ReservationStatus,
 } from "@/lib/library";
 import { createUsers, setUserRole } from "@/lib/admin.functions";
+import { Card } from "@/components/admin/card";
+import { BookCopiesManager, useCopyCounts } from "@/components/admin/copies-panel";
 
 const input =
   "rounded-2xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:border-primary-soft";
@@ -20,20 +22,7 @@ const primaryBtn =
 const ghostBtn =
   "inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-primary hover:bg-secondary";
 
-export function Card({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-      <h2 className="font-display text-lg text-primary">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
+export { Card };
 
 function Empty({ text }: { text: string }) {
   return <p className="text-sm text-muted-foreground">{text}</p>;
@@ -59,13 +48,14 @@ export function BooksAdmin() {
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [managingId, setManagingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     author: "",
     publisher: "",
     level: "livre",
     category_id: "",
-    total_copies: 1,
+    initial_copies: 0,
     synopsis: "",
   });
 
@@ -122,17 +112,28 @@ export function BooksAdmin() {
       if (form.title.trim().length < 2 || form.author.trim().length < 2) {
         throw new Error("Preencha título e autor");
       }
-      const { error } = await supabase.from("books").insert({
-        title: form.title.trim(),
-        author: form.author.trim(),
-        publisher: form.publisher.trim(),
-        level: form.level,
-        category_id: form.category_id || null,
-        total_copies: Number(form.total_copies) || 1,
-        available_copies: Number(form.total_copies) || 1,
-        synopsis: form.synopsis.trim(),
-      });
+      const { data, error } = await supabase
+        .from("books")
+        .insert({
+          title: form.title.trim(),
+          author: form.author.trim(),
+          publisher: form.publisher.trim(),
+          level: form.level,
+          category_id: form.category_id || null,
+          synopsis: form.synopsis.trim(),
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const quantity = Math.max(0, Number(form.initial_copies) || 0);
+      if (quantity > 0 && data) {
+        const { error: copyError } = await supabase.rpc("add_book_copies", {
+          _book_id: data.id,
+          _quantity: quantity,
+        });
+        if (copyError) throw new Error(`Livro criado, mas os exemplares falharam: ${copyError.message}`);
+      }
     },
     onSuccess: () => {
       toast.success("Livro cadastrado.");
@@ -143,10 +144,11 @@ export function BooksAdmin() {
         publisher: "",
         level: "livre",
         category_id: "",
-        total_copies: 1,
+        initial_copies: 0,
         synopsis: "",
       });
       void qc.invalidateQueries({ queryKey: ["admin-books"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível cadastrar."),
   });
@@ -159,16 +161,13 @@ export function BooksAdmin() {
       publisher: b.publisher,
       level: b.level,
       category_id: b.category_id || "",
-      total_copies: b.total_copies,
+      initial_copies: 0,
       synopsis: b.synopsis,
     });
   };
 
   const saveEdit = () => {
     if (!editingId) return;
-    const current = books.data?.find((b) => b.id === editingId);
-    const total = Number(form.total_copies);
-    const diff = total - (current?.total_copies ?? total);
     update.mutate(
       {
         id: editingId,
@@ -178,8 +177,6 @@ export function BooksAdmin() {
           publisher: form.publisher.trim(),
           level: form.level,
           category_id: form.category_id || null,
-          total_copies: total,
-          available_copies: Math.max(0, (current?.available_copies ?? total) + diff),
           synopsis: form.synopsis.trim(),
         },
       },
@@ -188,6 +185,8 @@ export function BooksAdmin() {
       },
     );
   };
+
+  const counts = useCopyCounts((books.data ?? []).map((b) => b.id));
 
   return (
     <Card title="Livros">
@@ -251,10 +250,11 @@ export function BooksAdmin() {
           <input
             className={input}
             type="number"
-            min={1}
-            placeholder="Exemplares"
-            value={form.total_copies}
-            onChange={(e) => setForm({ ...form, total_copies: Number(e.target.value) })}
+            min={0}
+            max={100}
+            placeholder="Exemplares iniciais (opcional)"
+            value={form.initial_copies}
+            onChange={(e) => setForm({ ...form, initial_copies: Number(e.target.value) })}
           />
           <textarea
             className={`${input} sm:col-span-2`}
@@ -322,14 +322,9 @@ export function BooksAdmin() {
                   <option value="fundamental2">Fundamental II</option>
                   <option value="medio">Ensino Médio</option>
                 </select>
-                <input
-                  className={input}
-                  type="number"
-                  min={1}
-                  placeholder="Exemplares"
-                  value={form.total_copies}
-                  onChange={(e) => setForm({ ...form, total_copies: Number(e.target.value) })}
-                />
+                <p className="self-center text-xs text-muted-foreground">
+                  A quantidade de exemplares é definida em “Gerenciar exemplares”.
+                </p>
                 <textarea
                   className={`${input} sm:col-span-2`}
                   rows={3}
@@ -354,47 +349,38 @@ export function BooksAdmin() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-foreground">{b.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{b.author}</p>
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{b.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{b.author}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {(counts.data?.[b.id]?.["total"] ?? 0)} exemplares ·{" "}
+                      {(counts.data?.[b.id]?.["disponivel"] ?? 0)} disponíveis ·{" "}
+                      {(counts.data?.[b.id]?.["emprestado"] ?? 0)} emprestados ·{" "}
+                      {(counts.data?.[b.id]?.["manutencao"] ?? 0)} manutenção
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      className={ghostBtn}
+                      onClick={() => setManagingId(managingId === b.id ? null : b.id)}
+                    >
+                      <Layers className="size-3" /> Gerenciar exemplares
+                    </button>
+                    <button className={ghostBtn} onClick={() => startEdit(b)}>
+                      Editar
+                    </button>
+                    <button
+                      className={ghostBtn}
+                      onClick={() => update.mutate({ id: b.id, patch: { active: !b.active } })}
+                    >
+                      {b.active ? "Desativar" : "Ativar"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                    Exemplares
-                    <input
-                      type="number"
-                      min={0}
-                      defaultValue={b.total_copies}
-                      onBlur={(e) => {
-                        const total = Number(e.target.value);
-                        if (total === b.total_copies) return;
-                        const diff = total - b.total_copies;
-                        update.mutate({
-                          id: b.id,
-                          patch: {
-                            total_copies: total,
-                            available_copies: Math.max(0, b.available_copies + diff),
-                          },
-                        });
-                      }}
-                      className="w-16 rounded-lg border border-border bg-card px-2 py-1 text-xs"
-                    />
-                  </label>
-                  <span className="rounded-full bg-secondary px-3 py-1 text-xs text-primary">
-                    {b.available_copies} disp.
-                  </span>
-                  <button className={ghostBtn} onClick={() => startEdit(b)}>
-                    Editar
-                  </button>
-                  <button
-                    className={ghostBtn}
-                    onClick={() => update.mutate({ id: b.id, patch: { active: !b.active } })}
-                  >
-                    {b.active ? "Desativar" : "Ativar"}
-                  </button>
-                </div>
-              </div>
+                {managingId === b.id && <BookCopiesManager bookId={b.id} title={b.title} />}
+              </>
             )}
           </div>
         ))}
