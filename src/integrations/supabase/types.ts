@@ -21,6 +21,7 @@ export type Database = {
           condition: string
           created_at: string
           id: string
+          location: string
           notes: string
           status: string
           updated_at: string
@@ -31,6 +32,7 @@ export type Database = {
           condition?: string
           created_at?: string
           id?: string
+          location?: string
           notes?: string
           status?: string
           updated_at?: string
@@ -41,6 +43,7 @@ export type Database = {
           condition?: string
           created_at?: string
           id?: string
+          location?: string
           notes?: string
           status?: string
           updated_at?: string
@@ -395,6 +398,33 @@ export type Database = {
       }
     }
     Functions: {
+      add_book_copies: {
+        Args: {
+          _asset_code?: string
+          _book_id: string
+          _condition?: string
+          _location?: string
+          _notes?: string
+          _quantity?: number
+        }
+        Returns: {
+          asset_code: string
+          book_id: string
+          condition: string
+          created_at: string
+          id: string
+          location: string
+          notes: string
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "book_copies"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -404,11 +434,15 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       library_maintenance: { Args: never; Returns: Json }
+      next_asset_code: { Args: never; Returns: string }
       register_checkout: {
         Args: { _copy_id: string; _reservation_id?: string; _user_id: string }
         Returns: string
       }
-      register_return: { Args: { _loan_id: string }; Returns: undefined }
+      register_return: {
+        Args: { _copy_status?: string; _loan_id: string }
+        Returns: undefined
+      }
       sync_book_availability: { Args: { _book_id: string }; Returns: undefined }
     }
     Enums: {
