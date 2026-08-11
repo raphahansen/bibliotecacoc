@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, Trash2, Barcode } from "lucide-react";
+import { Loader2, Search, Plus, Check, X, Barcode, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/panels";
@@ -18,6 +18,7 @@ export const copyStatusLabels: Record<string, string> = {
   manutencao: "Em manutenção",
   perdido: "Perdido",
   baixado: "Baixado",
+  extraviado: "Extraviado",
 };
 
 export const copyConditionLabels: Record<string, string> = {
@@ -33,19 +34,387 @@ type CopyRow = {
   asset_code: string;
   status: string;
   condition: string;
+  location: string;
   notes: string;
   books: { title: string; author: string } | null;
 };
 
-export function CopiesAdmin() {
+const copySelect = "id, book_id, asset_code, status, condition, location, notes, books(title, author)";
+
+/* --------------------------- Formulário de criação -------------------------- */
+
+type NewCopyState = {
+  asset_code: string;
+  autoCode: boolean;
+  quantity: number;
+  condition: string;
+  location: string;
+  notes: string;
+};
+
+const emptyNewCopy: NewCopyState = {
+  asset_code: "",
+  autoCode: true,
+  quantity: 1,
+  condition: "bom",
+  location: "Biblioteca",
+  notes: "",
+};
+
+function useAddCopies(onDone: () => void) {
   const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ bookId, state }: { bookId: string; state: NewCopyState }) => {
+      if (!bookId) throw new Error("Selecione o livro");
+      if (!state.autoCode && state.asset_code.trim().length < 2) {
+        throw new Error("Informe o código de patrimônio ou use a geração automática");
+      }
+      const { error } = await supabase.rpc("add_book_copies", {
+        _book_id: bookId,
+        _quantity: state.autoCode ? Math.max(1, Number(state.quantity) || 1) : 1,
+        _condition: state.condition,
+        _location: state.location.trim() || "Biblioteca",
+        _notes: state.notes.trim(),
+        ...(state.autoCode ? {} : { _asset_code: state.asset_code.trim() }),
+      });
+      if (error) {
+        throw new Error(
+          /duplicate|já existe/i.test(error.message)
+            ? "Já existe um exemplar com esse código."
+            : error.message,
+        );
+      }
+    },
+    onSuccess: () => {
+      toast.success("Exemplar(es) cadastrado(s).");
+      onDone();
+      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
+      void qc.invalidateQueries({ queryKey: ["admin-book-copies"] });
+      void qc.invalidateQueries({ queryKey: ["admin-books"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível cadastrar."),
+  });
+}
+
+function NewCopyForm({
+  bookId,
+  onCancel,
+  bookPicker,
+}: {
+  bookId: string;
+  onCancel: () => void;
+  bookPicker?: React.ReactNode;
+}) {
+  const [state, setState] = useState<NewCopyState>(emptyNewCopy);
+  const add = useAddCopies(() => {
+    setState(emptyNewCopy);
+    onCancel();
+  });
+
+  return (
+    <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-background p-4 md:grid-cols-2">
+      {bookPicker}
+      <label className="flex items-center gap-2 text-sm text-foreground md:col-span-2">
+        <input
+          type="checkbox"
+          checked={state.autoCode}
+          onChange={(e) => setState({ ...state, autoCode: e.target.checked })}
+        />
+        Gerar código de patrimônio automaticamente
+      </label>
+      {state.autoCode ? (
+        <input
+          type="number"
+          min={1}
+          max={100}
+          value={state.quantity}
+          onChange={(e) => setState({ ...state, quantity: Number(e.target.value) })}
+          placeholder="Quantidade de exemplares"
+          className={input}
+        />
+      ) : (
+        <input
+          value={state.asset_code}
+          onChange={(e) => setState({ ...state, asset_code: e.target.value })}
+          placeholder="Código patrimonial (ex.: PAT-001234)"
+          className={input}
+        />
+      )}
+      <select
+        value={state.condition}
+        onChange={(e) => setState({ ...state, condition: e.target.value })}
+        className={input}
+      >
+        {Object.entries(copyConditionLabels).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <input
+        value={state.location}
+        onChange={(e) => setState({ ...state, location: e.target.value })}
+        placeholder="Localização"
+        className={input}
+      />
+      <input
+        value={state.notes}
+        onChange={(e) => setState({ ...state, notes: e.target.value })}
+        placeholder="Observações (opcional)"
+        className={input}
+      />
+      <div className="flex gap-2 md:col-span-2">
+        <button
+          className={primaryBtn}
+          disabled={add.isPending}
+          onClick={() => add.mutate({ bookId, state })}
+        >
+          {add.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+          Salvar exemplar
+        </button>
+        <button className={ghostBtn} onClick={onCancel}>
+          <X className="size-3.5" /> Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Linha/edição ------------------------------- */
+
+type EditState = { asset_code: string; status: string; condition: string; location: string; notes: string };
+
+function CopyRowItem({
+  copy,
+  showBook,
+}: {
+  copy: CopyRow;
+  showBook: boolean;
+}) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState<EditState>({
+    asset_code: copy.asset_code,
+    status: copy.status,
+    condition: copy.condition,
+    location: copy.location,
+    notes: copy.notes,
+  });
+
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ["admin-copies"] });
+    void qc.invalidateQueries({ queryKey: ["admin-book-copies"] });
+    void qc.invalidateQueries({ queryKey: ["admin-books"] });
+    void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
+  };
+
+  const save = useMutation({
+    mutationFn: async (patch: Partial<EditState>) => {
+      const body = {
+        asset_code: (patch.asset_code ?? edit.asset_code).trim(),
+        status: patch.status ?? edit.status,
+        condition: patch.condition ?? edit.condition,
+        location: (patch.location ?? edit.location).trim() || "Biblioteca",
+        notes: (patch.notes ?? edit.notes).trim(),
+      };
+      if (body.asset_code.length < 2) throw new Error("Código inválido");
+      const { error } = await supabase.from("book_copies").update(body).eq("id", copy.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Exemplar atualizado.");
+      setEditing(false);
+      invalidate();
+    },
+    onError: (e: Error) =>
+      toast.error(
+        e.message.includes("duplicate") ? "Já existe um exemplar com esse código." : "Não foi possível salvar.",
+      ),
+  });
+
+  const locked = copy.status === "emprestado";
+
+  if (editing) {
+    return (
+      <div className="grid gap-3 rounded-2xl border border-primary-soft bg-background p-4 md:grid-cols-2">
+        <input
+          value={edit.asset_code}
+          onChange={(e) => setEdit({ ...edit, asset_code: e.target.value })}
+          placeholder="Código patrimonial"
+          className={input}
+        />
+        <select
+          value={edit.status}
+          onChange={(e) => setEdit({ ...edit, status: e.target.value })}
+          className={input}
+          disabled={locked}
+        >
+          {Object.entries(copyStatusLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={edit.condition}
+          onChange={(e) => setEdit({ ...edit, condition: e.target.value })}
+          className={input}
+        >
+          {Object.entries(copyConditionLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <input
+          value={edit.location}
+          onChange={(e) => setEdit({ ...edit, location: e.target.value })}
+          placeholder="Localização"
+          className={input}
+        />
+        <input
+          value={edit.notes}
+          onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
+          placeholder="Observações"
+          className={`${input} md:col-span-2`}
+        />
+        <div className="flex flex-wrap gap-2 md:col-span-2">
+          <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate({})}>
+            {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+            Salvar
+          </button>
+          <button className={ghostBtn} onClick={() => setEditing(false)}>
+            <X className="size-3.5" /> Cancelar
+          </button>
+          {copy.status !== "baixado" && !locked && (
+            <button
+              className={`${ghostBtn} text-destructive`}
+              onClick={() => {
+                if (confirm("Dar baixa neste exemplar? Ele deixará de ser emprestável, mas o histórico é preservado."))
+                  save.mutate({ status: "baixado" });
+              }}
+            >
+              <Ban className="size-3.5" /> Dar baixa
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 font-mono text-sm font-semibold text-primary">
+          <Barcode className="size-4" /> {copy.asset_code}
+        </p>
+        {showBook && <p className="truncate text-sm text-foreground">{copy.books?.title ?? "Livro removido"}</p>}
+        <p className="truncate text-xs text-muted-foreground">
+          {showBook && copy.books?.author ? `${copy.books.author} · ` : ""}
+          {copyConditionLabels[copy.condition] ?? copy.condition} · {copy.location}
+          {copy.notes ? ` · ${copy.notes}` : ""}
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
+          {copyStatusLabels[copy.status] ?? copy.status}
+        </span>
+        <button className={ghostBtn} onClick={() => setEditing(true)}>
+          {locked ? "Ver" : "Editar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------- Gerenciar exemplares de um livro -------------------- */
+
+export function useCopyCounts(bookIds: string[]) {
+  return useQuery({
+    queryKey: ["admin-copy-counts", bookIds.join(",")],
+    enabled: bookIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select("book_id, status")
+        .in("book_id", bookIds);
+      if (error) throw error;
+      const map: Record<string, Record<string, number>> = {};
+      for (const row of (data ?? []) as { book_id: string; status: string }[]) {
+        map[row.book_id] ??= {};
+        const bucket = map[row.book_id]!;
+        bucket["total"] = (bucket["total"] ?? 0) + 1;
+        bucket[row.status] = (bucket[row.status] ?? 0) + 1;
+      }
+      return map;
+    },
+  });
+}
+
+export function BookCopiesManager({ bookId, title }: { bookId: string; title: string }) {
+  const [creating, setCreating] = useState(false);
+
+  const copies = useQuery({
+    queryKey: ["admin-book-copies", bookId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select(copySelect)
+        .eq("book_id", bookId)
+        .order("asset_code");
+      if (error) throw error;
+      return (data ?? []) as unknown as CopyRow[];
+    },
+  });
+
+  const rows = copies.data ?? [];
+  const count = (s: string) => rows.filter((r) => r.status === s).length;
+
+  return (
+    <div className="mt-3 rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Gerenciar exemplares · {title}</p>
+          <p className="text-xs text-muted-foreground">
+            Total: {rows.length} · Disponíveis: {count("disponivel")} · Emprestados: {count("emprestado")} ·
+            Manutenção: {count("manutencao")} · Baixados: {count("baixado") + count("perdido") + count("extraviado")}
+          </p>
+        </div>
+        <button className={primaryBtn} onClick={() => setCreating((v) => !v)}>
+          <Plus className="size-4" /> Adicionar exemplar
+        </button>
+      </div>
+
+      {creating && <NewCopyForm bookId={bookId} onCancel={() => setCreating(false)} />}
+
+      <div className="mt-4 grid gap-2">
+        {copies.isLoading && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Carregando exemplares…
+          </p>
+        )}
+        {!copies.isLoading && rows.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            Nenhum exemplar físico cadastrado. Use “Adicionar exemplar”.
+          </p>
+        )}
+        {rows.map((copy) => (
+          <CopyRowItem key={copy.id} copy={copy} showBook={false} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------- Painel geral ------------------------------- */
+
+export function CopiesAdmin() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [edit, setEdit] = useState({ asset_code: "", status: "disponivel", condition: "bom", notes: "" });
   const [creating, setCreating] = useState(false);
-  const [newCopy, setNewCopy] = useState({ book_id: "", asset_code: "", condition: "bom", notes: "" });
   const [bookQuery, setBookQuery] = useState("");
+  const [bookId, setBookId] = useState("");
 
   const copies = useQuery({
     queryKey: ["admin-copies", q, status],
@@ -61,11 +430,7 @@ export function CopiesAdmin() {
         bookIds = (books ?? []).map((b) => b.id);
       }
 
-      let query = supabase
-        .from("book_copies")
-        .select("id, book_id, asset_code, status, condition, notes, books(title, author)")
-        .order("asset_code")
-        .limit(60);
+      let query = supabase.from("book_copies").select(copySelect).order("asset_code").limit(60);
 
       if (status) query = query.eq("status", status);
       if (term) {
@@ -91,65 +456,6 @@ export function CopiesAdmin() {
       if (error) throw error;
       return (data ?? []) as { id: string; title: string; author: string }[];
     },
-  });
-
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!editingId) return;
-      if (edit.asset_code.trim().length < 2) throw new Error("Código inválido");
-      const { error } = await supabase
-        .from("book_copies")
-        .update({
-          asset_code: edit.asset_code.trim(),
-          status: edit.status,
-          condition: edit.condition,
-          notes: edit.notes.trim(),
-        })
-        .eq("id", editingId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Exemplar atualizado.");
-      setEditingId(null);
-      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
-    },
-    onError: (e: Error) =>
-      toast.error(
-        e.message.includes("duplicate") ? "Já existe um exemplar com esse código." : "Não foi possível salvar.",
-      ),
-  });
-
-  const create = useMutation({
-    mutationFn: async () => {
-      if (!newCopy.book_id) throw new Error("Selecione o livro");
-      if (newCopy.asset_code.trim().length < 2) throw new Error("Informe o código de patrimônio");
-      const { error } = await supabase.from("book_copies").insert({
-        book_id: newCopy.book_id,
-        asset_code: newCopy.asset_code.trim(),
-        condition: newCopy.condition,
-        notes: newCopy.notes.trim(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Exemplar cadastrado.");
-      setCreating(false);
-      setNewCopy({ book_id: "", asset_code: "", condition: "bom", notes: "" });
-      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
-    },
-    onError: (e: Error) => toast.error(e.message || "Não foi possível cadastrar."),
-  });
-
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("book_copies").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Exemplar removido.");
-      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
-    },
-    onError: () => toast.error("Não foi possível remover."),
   });
 
   return (
@@ -178,58 +484,32 @@ export function CopiesAdmin() {
       </div>
 
       {creating && (
-        <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-background p-4 md:grid-cols-2">
-          <input
-            value={bookQuery}
-            onChange={(e) => setBookQuery(e.target.value)}
-            placeholder="Buscar livro…"
-            className={input}
-          />
-          <select
-            value={newCopy.book_id}
-            onChange={(e) => setNewCopy({ ...newCopy, book_id: e.target.value })}
-            className={input}
-          >
-            <option value="">Selecione o livro</option>
-            {(bookOptions.data ?? []).map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.title} — {b.author}
-              </option>
-            ))}
-          </select>
-          <input
-            value={newCopy.asset_code}
-            onChange={(e) => setNewCopy({ ...newCopy, asset_code: e.target.value })}
-            placeholder="Código de patrimônio (ex.: PAT-001234)"
-            className={input}
-          />
-          <select
-            value={newCopy.condition}
-            onChange={(e) => setNewCopy({ ...newCopy, condition: e.target.value })}
-            className={input}
-          >
-            {Object.entries(copyConditionLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <input
-            value={newCopy.notes}
-            onChange={(e) => setNewCopy({ ...newCopy, notes: e.target.value })}
-            placeholder="Observações (opcional)"
-            className={`${input} md:col-span-2`}
-          />
-          <div className="flex gap-2 md:col-span-2">
-            <button className={primaryBtn} disabled={create.isPending} onClick={() => create.mutate()}>
-              {create.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-              Salvar exemplar
-            </button>
-            <button className={ghostBtn} onClick={() => setCreating(false)}>
-              <X className="size-3.5" /> Cancelar
-            </button>
-          </div>
-        </div>
+        <NewCopyForm
+          bookId={bookId}
+          onCancel={() => setCreating(false)}
+          bookPicker={
+            <>
+              <input
+                value={bookQuery}
+                onChange={(e) => setBookQuery(e.target.value)}
+                placeholder="Buscar livro…"
+                className={input}
+              />
+              <select
+                value={bookId}
+                onChange={(e) => setBookId(e.target.value)}
+                className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+              >
+                <option value="">Selecione o livro</option>
+                {(bookOptions.data ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.title.length > 40 ? `${b.title.slice(0, 40)}…` : b.title} — {b.author.slice(0, 22)}
+                  </option>
+                ))}
+              </select>
+            </>
+          }
+        />
       )}
 
       <div className="mt-4 grid gap-2">
@@ -241,94 +521,9 @@ export function CopiesAdmin() {
         {!copies.isLoading && (copies.data ?? []).length === 0 && (
           <p className="text-sm text-muted-foreground">Nenhum exemplar encontrado.</p>
         )}
-        {(copies.data ?? []).map((copy) =>
-          editingId === copy.id ? (
-            <div key={copy.id} className="grid gap-3 rounded-2xl border border-primary-soft bg-background p-4 md:grid-cols-2">
-              <input
-                value={edit.asset_code}
-                onChange={(e) => setEdit({ ...edit, asset_code: e.target.value })}
-                placeholder="Código de patrimônio"
-                className={input}
-              />
-              <select value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value })} className={input}>
-                {Object.entries(copyStatusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={edit.condition}
-                onChange={(e) => setEdit({ ...edit, condition: e.target.value })}
-                className={input}
-              >
-                {Object.entries(copyConditionLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={edit.notes}
-                onChange={(e) => setEdit({ ...edit, notes: e.target.value })}
-                placeholder="Observações"
-                className={input}
-              />
-              <div className="flex flex-wrap gap-2 md:col-span-2">
-                <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate()}>
-                  {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  Salvar
-                </button>
-                <button className={ghostBtn} onClick={() => setEditingId(null)}>
-                  <X className="size-3.5" /> Cancelar
-                </button>
-                <button
-                  className={`${ghostBtn} text-destructive`}
-                  onClick={() => {
-                    if (confirm("Remover este exemplar?")) remove.mutate(copy.id);
-                  }}
-                >
-                  <Trash2 className="size-3.5" /> Remover
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              key={copy.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
-            >
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 font-mono text-sm font-semibold text-primary">
-                  <Barcode className="size-4" /> {copy.asset_code}
-                </p>
-                <p className="truncate text-sm text-foreground">{copy.books?.title ?? "Livro removido"}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {copy.books?.author} · {copyConditionLabels[copy.condition] ?? copy.condition}
-                  {copy.notes ? ` · ${copy.notes}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
-                  {copyStatusLabels[copy.status] ?? copy.status}
-                </span>
-                <button
-                  className={ghostBtn}
-                  onClick={() => {
-                    setEditingId(copy.id);
-                    setEdit({
-                      asset_code: copy.asset_code,
-                      status: copy.status,
-                      condition: copy.condition,
-                      notes: copy.notes,
-                    });
-                  }}
-                >
-                  Editar
-                </button>
-              </div>
-            </div>
-          ),
-        )}
+        {(copies.data ?? []).map((copy) => (
+          <CopyRowItem key={copy.id} copy={copy} showBook />
+        ))}
       </div>
     </Card>
   );
