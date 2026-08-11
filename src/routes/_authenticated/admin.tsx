@@ -12,6 +12,7 @@ import {
   ReservationsAdmin,
   UsersAdmin,
 } from "@/components/admin/panels";
+import { CopiesAdmin } from "@/components/admin/copies-panel";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
