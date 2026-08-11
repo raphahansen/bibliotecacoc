@@ -842,24 +842,17 @@ export function LoansAdmin() {
             </select>
           </div>
           <div className="min-w-0">
-            <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
-            <select
-              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
-              value={form.book_id}
-              onChange={(e) => setForm({ ...form, book_id: e.target.value, copy_id: "" })}
-            >
-              <option value="">Selecione um livro</option>
-              {books.data?.map((b) => {
-                const title = b.title.length > 40 ? b.title.slice(0, 40) + "…" : b.title;
-                const author = b.author.length > 22 ? b.author.slice(0, 22) + "…" : b.author;
-                return (
-                  <option key={b.id} value={b.id}>
-                    {title} — {author} ({b.available_copies} disp.)
-                  </option>
-                );
-              })}
-            </select>
+            <BookSelector
+              label="Livro disponível"
+              onlyAvailable
+              value={book}
+              onChange={(b) => {
+                setBook(b);
+                setForm({ ...form, book_id: b?.id ?? "", copy_id: "" });
+              }}
+            />
           </div>
+
           <div className="min-w-0 sm:col-span-2">
             <label className="text-xs font-medium text-muted-foreground">
               Exemplar (código BIB)
