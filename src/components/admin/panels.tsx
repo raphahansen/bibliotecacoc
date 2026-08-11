@@ -531,9 +531,14 @@ export function ReservationsAdmin() {
                 <>
                   <button
                     className={ghostBtn}
-                    onClick={() =>
-                      toLoan.mutate({ id: r.id, user_id: r.user_id, book_id: r.book_id })
-                    }
+                    onClick={() => {
+                      setCopyId("");
+                      setCheckoutFor({
+                        id: r.id,
+                        user_id: r.user_id,
+                        book_id: r.book_id,
+                      });
+                    }}
                   >
                     Registrar retirada
                   </button>
@@ -546,7 +551,39 @@ export function ReservationsAdmin() {
                 </>
               )}
             </div>
+            {checkoutFor?.id === r.id && (
+              <div className="flex w-full min-w-0 flex-wrap items-end gap-2 border-t border-border pt-3">
+                <div className="min-w-0 flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Exemplar (código de patrimônio)
+                  </label>
+                  <select
+                    className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+                    value={copyId}
+                    onChange={(e) => setCopyId(e.target.value)}
+                  >
+                    <option value="">Selecione o exemplar</option>
+                    {copies.data?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.asset_code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className={primaryBtn}
+                  disabled={toLoan.isPending}
+                  onClick={() => toLoan.mutate()}
+                >
+                  {toLoan.isPending && <Loader2 className="size-4 animate-spin" />} Confirmar
+                </button>
+                <button className={ghostBtn} onClick={() => setCheckoutFor(null)}>
+                  Cancelar
+                </button>
+              </div>
+            )}
           </div>
+
         ))}
         {reservations.data?.length === 0 && <Empty text="Nenhuma reserva registrada." />}
       </div>
