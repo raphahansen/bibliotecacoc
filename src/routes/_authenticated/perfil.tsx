@@ -185,7 +185,7 @@ function ProfilePage() {
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Minha conta
               </p>
-              <h1 className="mt-1 font-display text-3xl text-primary">
+              <h1 className="mt-1 font-display text-3xl font-semibold text-foreground">
                 {profile?.full_name || "Leitor(a)"}
               </h1>
             </div>
@@ -285,7 +285,7 @@ function ProfilePage() {
             )}
             <button
               onClick={handleSignOut}
-              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm text-muted-foreground hover:text-primary"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground hover:bg-secondary hover:text-primary"
             >
               <LogOut className="size-4" /> Sair
             </button>
