@@ -431,6 +431,28 @@ export function ReservationsAdmin() {
     },
   });
 
+  const [checkoutFor, setCheckoutFor] = useState<{
+    id: string;
+    user_id: string;
+    book_id: string;
+  } | null>(null);
+  const [copyId, setCopyId] = useState("");
+
+  const copies = useQuery({
+    queryKey: ["admin-reservation-copies", checkoutFor?.book_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select("id, asset_code")
+        .eq("book_id", checkoutFor!.book_id)
+        .eq("status", "disponivel")
+        .order("asset_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; asset_code: string }[];
+    },
+    enabled: !!checkoutFor,
+  });
+
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: ReservationStatus }) => {
       const { error } = await supabase.from("reservations").update({ status }).eq("id", id);
@@ -444,51 +466,26 @@ export function ReservationsAdmin() {
   });
 
   const toLoan = useMutation({
-    mutationFn: async (r: { id: string; user_id: string; book_id: string }) => {
-      const { data: setting } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "loan_days")
-        .maybeSingle();
-      const days = Number((setting as { value: string } | null)?.value ?? 15);
-      const due = new Date();
-      due.setDate(due.getDate() + days);
-
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("available_copies")
-        .eq("id", r.book_id)
-        .single();
-      if (bookError) throw bookError;
-      if ((book as { available_copies: number }).available_copies < 1) {
-        throw new Error("Sem exemplares disponíveis");
-      }
-
-      const { error: loanError } = await supabase.from("loans").insert({
-        user_id: r.user_id,
-        book_id: r.book_id,
-        reservation_id: r.id,
-        due_date: due.toISOString().slice(0, 10),
-        status: "ativo",
+    mutationFn: async () => {
+      if (!checkoutFor || !copyId) throw new Error("Selecione o exemplar");
+      const { error } = await supabase.rpc("register_checkout", {
+        _user_id: checkoutFor.user_id,
+        _copy_id: copyId,
+        _reservation_id: checkoutFor.id,
       });
-      if (loanError) throw loanError;
-
-      await supabase
-        .from("books")
-        .update({
-          available_copies: (book as { available_copies: number }).available_copies - 1,
-        })
-        .eq("id", r.book_id);
-      await supabase.from("reservations").update({ status: "concluida" }).eq("id", r.id);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Empréstimo registrado.");
+      setCheckoutFor(null);
+      setCopyId("");
       void qc.invalidateQueries({ queryKey: ["admin-reservations"] });
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível registrar."),
   });
+
 
   return (
     <Card title="Reservas">
@@ -534,9 +531,14 @@ export function ReservationsAdmin() {
                 <>
                   <button
                     className={ghostBtn}
-                    onClick={() =>
-                      toLoan.mutate({ id: r.id, user_id: r.user_id, book_id: r.book_id })
-                    }
+                    onClick={() => {
+                      setCopyId("");
+                      setCheckoutFor({
+                        id: r.id,
+                        user_id: r.user_id,
+                        book_id: r.book_id,
+                      });
+                    }}
                   >
                     Registrar retirada
                   </button>
@@ -549,7 +551,39 @@ export function ReservationsAdmin() {
                 </>
               )}
             </div>
+            {checkoutFor?.id === r.id && (
+              <div className="flex w-full min-w-0 flex-wrap items-end gap-2 border-t border-border pt-3">
+                <div className="min-w-0 flex-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Exemplar (código de patrimônio)
+                  </label>
+                  <select
+                    className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+                    value={copyId}
+                    onChange={(e) => setCopyId(e.target.value)}
+                  >
+                    <option value="">Selecione o exemplar</option>
+                    {copies.data?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.asset_code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className={primaryBtn}
+                  disabled={toLoan.isPending}
+                  onClick={() => toLoan.mutate()}
+                >
+                  {toLoan.isPending && <Loader2 className="size-4 animate-spin" />} Confirmar
+                </button>
+                <button className={ghostBtn} onClick={() => setCheckoutFor(null)}>
+                  Cancelar
+                </button>
+              </div>
+            )}
           </div>
+
         ))}
         {reservations.data?.length === 0 && <Empty text="Nenhuma reserva registrada." />}
       </div>
@@ -562,7 +596,7 @@ export function ReservationsAdmin() {
 export function LoansAdmin() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ user_id: "", book_id: "" });
+  const [form, setForm] = useState({ user_id: "", book_id: "", copy_id: "" });
 
   const loans = useQuery({
     queryKey: ["admin-loans"],
@@ -619,65 +653,48 @@ export function LoansAdmin() {
     enabled: creating,
   });
 
+  const copies = useQuery({
+    queryKey: ["admin-loan-copies", form.book_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("book_copies")
+        .select("id, asset_code")
+        .eq("book_id", form.book_id)
+        .eq("status", "disponivel")
+        .order("asset_code");
+      if (error) throw error;
+      return (data ?? []) as { id: string; asset_code: string }[];
+    },
+    enabled: creating && !!form.book_id,
+  });
+
   const create = useMutation({
     mutationFn: async () => {
       if (!form.user_id || !form.book_id) throw new Error("Selecione leitor e livro");
-      const { data: setting } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "loan_days")
-        .maybeSingle();
-      const days = Number((setting as { value: string } | null)?.value ?? 15);
-      const due = new Date();
-      due.setDate(due.getDate() + days);
-
-      const { data: book, error: bookError } = await supabase
-        .from("books")
-        .select("available_copies")
-        .eq("id", form.book_id)
-        .single();
-      if (bookError) throw bookError;
-      if ((book as { available_copies: number }).available_copies < 1) {
-        throw new Error("Sem exemplares disponíveis");
-      }
-
-      const { error: loanError } = await supabase.from("loans").insert({
-        user_id: form.user_id,
-        book_id: form.book_id,
-        due_date: due.toISOString().slice(0, 10),
-        status: "ativo",
+      if (!form.copy_id) throw new Error("Selecione o exemplar");
+      const { error } = await supabase.rpc("register_checkout", {
+        _user_id: form.user_id,
+        _copy_id: form.copy_id,
       });
-      if (loanError) throw loanError;
-
-      await supabase
-        .from("books")
-        .update({
-          available_copies: (book as { available_copies: number }).available_copies - 1,
-        })
-        .eq("id", form.book_id);
+      if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Empréstimo registrado no balcão.");
       setCreating(false);
-      setForm({ user_id: "", book_id: "" });
+      setForm({ user_id: "", book_id: "", copy_id: "" });
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
+
     onError: (e: Error) => toast.error(e.message || "Não foi possível registrar o empréstimo."),
   });
 
   const giveBack = useMutation({
-    mutationFn: async (l: { id: string; book_id: string; available: number }) => {
-      const { error } = await supabase
-        .from("loans")
-        .update({ status: "devolvido", returned_at: new Date().toISOString() })
-        .eq("id", l.id);
-      if (error) throw error;
-      await supabase
-        .from("books")
-        .update({ available_copies: l.available + 1 })
-        .eq("id", l.book_id);
+    mutationFn: async (l: { id: string }) => {
+      const { error } = await supabase.rpc("register_return", { _loan_id: l.id });
+      if (error) throw new Error(error.message);
     },
+
     onSuccess: () => {
       toast.success("Devolução registrada.");
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
@@ -720,7 +737,7 @@ export function LoansAdmin() {
             <select
               className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
               value={form.book_id}
-              onChange={(e) => setForm({ ...form, book_id: e.target.value })}
+              onChange={(e) => setForm({ ...form, book_id: e.target.value, copy_id: "" })}
             >
               <option value="">Selecione um livro</option>
               {books.data?.map((b) => {
@@ -734,6 +751,27 @@ export function LoansAdmin() {
               })}
             </select>
           </div>
+          <div className="min-w-0 sm:col-span-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              Exemplar (código de patrimônio)
+            </label>
+            <select
+              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
+              value={form.copy_id}
+              disabled={!form.book_id}
+              onChange={(e) => setForm({ ...form, copy_id: e.target.value })}
+            >
+              <option value="">
+                {form.book_id ? "Selecione o exemplar" : "Escolha um livro primeiro"}
+              </option>
+              {copies.data?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.asset_code}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-2 sm:col-span-2">
             <button
               onClick={() => create.mutate()}
@@ -778,13 +816,8 @@ export function LoansAdmin() {
                 {!l.returned_at && (
                   <button
                     className={ghostBtn}
-                    onClick={() =>
-                      giveBack.mutate({
-                        id: l.id,
-                        book_id: l.book_id,
-                        available: l.books?.available_copies ?? 0,
-                      })
-                    }
+                    onClick={() => giveBack.mutate({ id: l.id })}
+
                   >
                     <RotateCcw className="size-3" /> Devolver
                   </button>

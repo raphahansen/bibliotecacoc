@@ -144,6 +144,7 @@ export type Database = {
       loans: {
         Row: {
           book_id: string
+          copy_id: string | null
           created_at: string
           due_date: string
           id: string
@@ -157,6 +158,7 @@ export type Database = {
         }
         Insert: {
           book_id: string
+          copy_id?: string | null
           created_at?: string
           due_date?: string
           id?: string
@@ -170,6 +172,7 @@ export type Database = {
         }
         Update: {
           book_id?: string
+          copy_id?: string | null
           created_at?: string
           due_date?: string
           id?: string
@@ -187,6 +190,13 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_copy_id_fkey"
+            columns: ["copy_id"]
+            isOneToOne: false
+            referencedRelation: "book_copies"
             referencedColumns: ["id"]
           },
           {
@@ -394,6 +404,12 @@ export type Database = {
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       library_maintenance: { Args: never; Returns: Json }
+      register_checkout: {
+        Args: { _copy_id: string; _reservation_id?: string; _user_id: string }
+        Returns: string
+      }
+      register_return: { Args: { _loan_id: string }; Returns: undefined }
+      sync_book_availability: { Args: { _book_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "aluno" | "professor" | "bibliotecario" | "admin"
