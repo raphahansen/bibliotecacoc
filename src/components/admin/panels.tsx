@@ -590,7 +590,7 @@ export function LoansAdmin() {
       const { data, error } = await supabase
         .from("loans")
         .select(
-          "id, status, loan_date, due_date, returned_at, book_id, books(title, available_copies), profiles(full_name, email)",
+          "id, status, loan_date, due_date, returned_at, book_id, copy_id, books(title, available_copies), book_copies(asset_code), profiles(full_name, email)",
         )
         .order("loan_date", { ascending: false })
         .limit(60);
@@ -602,7 +602,9 @@ export function LoansAdmin() {
         due_date: string;
         returned_at: string | null;
         book_id: string;
+        copy_id: string | null;
         books: { title: string; available_copies: number } | null;
+        book_copies: { asset_code: string } | null;
         profiles: { full_name: string; email: string } | null;
       }[];
     },
@@ -675,18 +677,30 @@ export function LoansAdmin() {
     onError: (e: Error) => toast.error(e.message || "Não foi possível registrar o empréstimo."),
   });
 
+  const [returningId, setReturningId] = useState<string | null>(null);
+  const [returnStatus, setReturnStatus] = useState("disponivel");
+
   const giveBack = useMutation({
-    mutationFn: async (l: { id: string }) => {
-      const { error } = await supabase.rpc("register_return", { _loan_id: l.id });
+    mutationFn: async (l: { id: string; copyStatus: string }) => {
+      const { error } = await supabase.rpc("register_return", {
+        _loan_id: l.id,
+        _copy_status: l.copyStatus,
+      });
       if (error) throw new Error(error.message);
     },
 
     onSuccess: () => {
       toast.success("Devolução registrada.");
+      setReturningId(null);
+      setReturnStatus("disponivel");
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copies"] });
+      void qc.invalidateQueries({ queryKey: ["admin-book-copies"] });
+      void qc.invalidateQueries({ queryKey: ["admin-copy-counts"] });
+      void qc.invalidateQueries({ queryKey: ["admin-books"] });
     },
-    onError: () => toast.error("Não foi possível registrar a devolução."),
+    onError: (e: Error) => toast.error(e.message || "Não foi possível registrar a devolução."),
   });
 
   const today = new Date(new Date().toDateString());
