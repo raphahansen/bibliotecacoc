@@ -1,9 +1,22 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, RotateCcw, BookOpen, UserRound, Layers } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Plus,
+  Check,
+  X,
+  RotateCcw,
+  BookOpen,
+  UserRound,
+  Layers,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  deleteReview,
   loanLabels,
   reservationLabels,
   roleLabels,
