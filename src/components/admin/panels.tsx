@@ -696,32 +696,36 @@ export function LoansAdmin() {
 
       {creating && (
         <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-background p-4 sm:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <label className="text-xs font-medium text-muted-foreground">Leitor</label>
             <select
-              className={input}
+              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
               value={form.user_id}
               onChange={(e) => setForm({ ...form, user_id: e.target.value })}
             >
               <option value="">Selecione um leitor</option>
-              {users.data?.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.full_name || u.email}
-                </option>
-              ))}
+              {users.data?.map((u) => {
+                const label = u.full_name || u.email;
+                const short = label.length > 50 ? label.slice(0, 50) + "…" : label;
+                return (
+                  <option key={u.id} value={u.id}>
+                    {short}
+                  </option>
+                );
+              })}
             </select>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
             <select
-              className={input}
+              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
               value={form.book_id}
               onChange={(e) => setForm({ ...form, book_id: e.target.value })}
             >
               <option value="">Selecione um livro</option>
               {books.data?.map((b) => {
-                const title = b.title.length > 45 ? b.title.slice(0, 45) + "…" : b.title;
-                const author = b.author.length > 25 ? b.author.slice(0, 25) + "…" : b.author;
+                const title = b.title.length > 40 ? b.title.slice(0, 40) + "…" : b.title;
+                const author = b.author.length > 22 ? b.author.slice(0, 22) + "…" : b.author;
                 return (
                   <option key={b.id} value={b.id}>
                     {title} — {author} ({b.available_copies} disp.)
