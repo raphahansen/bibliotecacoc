@@ -256,18 +256,10 @@ function CopyRowItem({
           placeholder="Código patrimonial"
           className={input}
         />
-        <select
-          value={edit.status}
-          onChange={(e) => setEdit({ ...edit, status: e.target.value })}
-          className={input}
-          disabled={locked}
-        >
-          {Object.entries(copyStatusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className={`${input} flex items-center justify-between gap-2 text-muted-foreground`}>
+          <span>Situação: {copyStatusLabels[copy.status] ?? copy.status}</span>
+          <span className="text-xs">definida por retirada/devolução</span>
+        </div>
         <select
           value={edit.condition}
           onChange={(e) => setEdit({ ...edit, condition: e.target.value })}
@@ -292,7 +284,7 @@ function CopyRowItem({
           className={`${input} md:col-span-2`}
         />
         <div className="flex flex-wrap gap-2 md:col-span-2">
-          <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate({})}>
+          <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
             Salvar
           </button>
@@ -302,9 +294,10 @@ function CopyRowItem({
           {copy.status !== "baixado" && !locked && (
             <button
               className={`${ghostBtn} text-destructive`}
+              disabled={writeOff.isPending}
               onClick={() => {
                 if (confirm("Dar baixa neste exemplar? Ele deixará de ser emprestável, mas o histórico é preservado."))
-                  save.mutate({ status: "baixado" });
+                  writeOff.mutate();
               }}
             >
               <Ban className="size-3.5" /> Dar baixa
