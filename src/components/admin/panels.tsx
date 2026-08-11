@@ -33,6 +33,8 @@ import {
 } from "@/lib/admin.functions";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
+import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+
 import { BooksImport, UsersImport } from "@/components/admin/csv-imports";
 import { BookCopiesManager, useCopyCounts } from "@/components/admin/copies-panel";
 
@@ -360,7 +362,7 @@ export function BooksAdmin() {
             onChange={(e) => setForm({ ...form, initial_copies: Number(e.target.value) })}
           />
           <p className="self-center text-xs text-muted-foreground">
-            Cada exemplar vira uma unidade física com código de patrimônio próprio.
+            Cada exemplar vira uma unidade física com código BIB próprio.
           </p>
           <button
             onClick={() => create.mutate()}
@@ -658,7 +660,7 @@ export function ReservationsAdmin() {
               <div className="flex w-full min-w-0 flex-wrap items-end gap-2 border-t border-border pt-3">
                 <div className="min-w-0 flex-1">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Exemplar (código de patrimônio)
+                    Exemplar (código BIB)
                   </label>
                   <select
                     className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
@@ -742,21 +744,8 @@ export function LoansAdmin() {
     enabled: creating,
   });
 
-  const books = useQuery({
-    queryKey: ["admin-loan-books"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("books")
-        .select("id, title, author, available_copies")
-        .eq("active", true)
-        .gt("available_copies", 0)
-        .order("title")
-        .limit(300);
-      if (error) throw error;
-      return (data ?? []) as { id: string; title: string; author: string; available_copies: number }[];
-    },
-    enabled: creating,
-  });
+  const [book, setBook] = useState<SelectableBook | null>(null);
+
 
   const copies = useQuery({
     queryKey: ["admin-loan-copies", form.book_id],
@@ -792,6 +781,8 @@ export function LoansAdmin() {
       toast.success("Empréstimo registrado no balcão.");
       setCreating(false);
       setForm({ user_id: "", book_id: "", copy_id: "" });
+      setBook(null);
+
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
@@ -855,27 +846,20 @@ export function LoansAdmin() {
             </select>
           </div>
           <div className="min-w-0">
-            <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
-            <select
-              className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
-              value={form.book_id}
-              onChange={(e) => setForm({ ...form, book_id: e.target.value, copy_id: "" })}
-            >
-              <option value="">Selecione um livro</option>
-              {books.data?.map((b) => {
-                const title = b.title.length > 40 ? b.title.slice(0, 40) + "…" : b.title;
-                const author = b.author.length > 22 ? b.author.slice(0, 22) + "…" : b.author;
-                return (
-                  <option key={b.id} value={b.id}>
-                    {title} — {author} ({b.available_copies} disp.)
-                  </option>
-                );
-              })}
-            </select>
+            <BookSelector
+              label="Livro disponível"
+              onlyAvailable
+              value={book}
+              onChange={(b) => {
+                setBook(b);
+                setForm({ ...form, book_id: b?.id ?? "", copy_id: "" });
+              }}
+            />
           </div>
+
           <div className="min-w-0 sm:col-span-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Exemplar (código de patrimônio)
+              Exemplar (código BIB)
             </label>
             <select
               className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}

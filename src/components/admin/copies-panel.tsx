@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
+import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+
 
 const COPIES_PAGE_SIZE = 20;
 
@@ -71,7 +73,7 @@ function useAddCopies(onDone: () => void) {
     mutationFn: async ({ bookId, state }: { bookId: string; state: NewCopyState }) => {
       if (!bookId) throw new Error("Selecione o livro");
       if (!state.autoCode && state.asset_code.trim().length < 2) {
-        throw new Error("Informe o código de patrimônio ou use a geração automática");
+        throw new Error("Informe o código BIB ou use a geração automática");
       }
       const { error } = await supabase.rpc("add_book_copies", {
         _book_id: bookId,
@@ -125,7 +127,7 @@ function NewCopyForm({
           checked={state.autoCode}
           onChange={(e) => setState({ ...state, autoCode: e.target.checked })}
         />
-        Gerar código de patrimônio automaticamente
+        Gerar código BIB automaticamente
       </label>
       {state.autoCode ? (
         <label className="flex flex-col gap-1 text-sm text-foreground md:col-span-2">
@@ -147,7 +149,7 @@ function NewCopyForm({
         <input
           value={state.asset_code}
           onChange={(e) => setState({ ...state, asset_code: e.target.value })}
-          placeholder="Código patrimonial (ex.: BIB-001234)"
+          placeholder="Código BIB (ex.: BIB-001234)"
           className={input}
         />
       )}
@@ -263,7 +265,7 @@ function CopyRowItem({
         <input
           value={edit.asset_code}
           onChange={(e) => setEdit({ ...edit, asset_code: e.target.value })}
-          placeholder="Código patrimonial"
+          placeholder="Código BIB"
           className={input}
         />
         <div className={`${input} flex items-center justify-between gap-2 text-muted-foreground`}>
@@ -430,8 +432,9 @@ export function CopiesAdmin() {
   const [sort, setSort] = useState("asset_code");
   const [page, setPage] = useState(0);
   const [creating, setCreating] = useState(false);
-  const [bookQuery, setBookQuery] = useState("");
-  const [bookId, setBookId] = useState("");
+  const [book, setBook] = useState<SelectableBook | null>(null);
+  const bookId = book?.id ?? "";
+
 
   useEffect(() => {
     setPage(0);
@@ -447,7 +450,7 @@ export function CopiesAdmin() {
           .from("books")
           .select("id")
           .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
-          .limit(200);
+          .limit(2000);
         bookIds = (books ?? []).map((b) => b.id);
       }
 
@@ -474,19 +477,6 @@ export function CopiesAdmin() {
   });
 
 
-  const bookOptions = useQuery({
-    queryKey: ["admin-copies-books", bookQuery],
-    enabled: creating,
-    queryFn: async () => {
-      const term = bookQuery.trim().replace(/[,%()]/g, " ");
-      let query = supabase.from("books").select("id, title, author").order("title").limit(20);
-      if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []) as { id: string; title: string; author: string }[];
-    },
-  });
-
   return (
     <Card title="Inventário de exemplares">
       <div className="flex flex-wrap items-center gap-2">
@@ -495,7 +485,7 @@ export function CopiesAdmin() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por código, título ou autor"
+            placeholder="Buscar por código BIB, título ou autor"
             className={`${input} w-full pl-9`}
           />
         </div>
@@ -508,7 +498,7 @@ export function CopiesAdmin() {
           ))}
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)} className={input}>
-          <option value="asset_code">Ordenar por patrimônio</option>
+          <option value="asset_code">Ordenar por código BIB</option>
           <option value="status">Ordenar por situação</option>
           <option value="recent">Mais recentes</option>
         </select>
@@ -522,29 +512,13 @@ export function CopiesAdmin() {
           bookId={bookId}
           onCancel={() => setCreating(false)}
           bookPicker={
-            <>
-              <input
-                value={bookQuery}
-                onChange={(e) => setBookQuery(e.target.value)}
-                placeholder="Buscar livro…"
-                className={input}
-              />
-              <select
-                value={bookId}
-                onChange={(e) => setBookId(e.target.value)}
-                className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
-              >
-                <option value="">Selecione o livro</option>
-                {(bookOptions.data ?? []).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.title.length > 40 ? `${b.title.slice(0, 40)}…` : b.title} — {b.author.slice(0, 22)}
-                  </option>
-                ))}
-              </select>
-            </>
+            <div className="md:col-span-2">
+              <BookSelector value={book} onChange={setBook} label="Livro" />
+            </div>
           }
         />
       )}
+
 
       <div className="mt-4 grid gap-2">
         {copies.isLoading && (

@@ -139,7 +139,7 @@ export function BooksImport({ onDone }: { onDone: () => void }) {
       <p className="text-sm font-semibold text-foreground">Importar livros em massa</p>
       <p className="mt-1 text-xs text-muted-foreground">
         Colunas: titulo, autor, editora, nivel, colecao, sinopse, quantidade_inicial. Cada unidade em
-        “quantidade_inicial” vira um exemplar físico com código de patrimônio próprio.
+        “quantidade_inicial” vira um exemplar físico com código BIB próprio.
       </p>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
