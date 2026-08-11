@@ -40,6 +40,7 @@ const tabs = [
   "Exemplares",
   "Reservas",
   "Empréstimos",
+  "Avaliações",
   "Usuários",
   "Categorias",
 ] as const;
