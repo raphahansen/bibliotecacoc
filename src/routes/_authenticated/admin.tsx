@@ -12,6 +12,7 @@ import {
   ReservationsAdmin,
   UsersAdmin,
 } from "@/components/admin/panels";
+import { CopiesAdmin } from "@/components/admin/copies-panel";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 const tabs = [
   "Visão geral",
   "Livros",
+  "Exemplares",
   "Reservas",
   "Empréstimos",
   "Usuários",
@@ -104,6 +106,7 @@ function AdminPage() {
         <div className="mt-6 grid gap-5">
           {tab === "Visão geral" && <DashboardAdmin />}
           {tab === "Livros" && <BooksAdmin />}
+          {tab === "Exemplares" && <CopiesAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
