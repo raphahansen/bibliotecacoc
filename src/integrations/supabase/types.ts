@@ -444,6 +444,10 @@ export type Database = {
         Returns: undefined
       }
       sync_book_availability: { Args: { _book_id: string }; Returns: undefined }
+      write_off_copy: {
+        Args: { _copy_id: string; _notes?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "aluno" | "professor" | "bibliotecario" | "admin"
