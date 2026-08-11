@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { BookOpen, Library, Loader2, Star, X } from "lucide-react";
+import { BookOpen, Library, Loader2, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createReservation,
+  deleteReview,
   fetchBookReviews,
   fetchMyReservations,
   levelLabel,
