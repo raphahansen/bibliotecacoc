@@ -1,18 +1,32 @@
-import { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { BookCard } from "./book-card";
-import type { Book } from "@/data/library";
+import { BookDetailDialog } from "./book-detail-dialog";
+import type { DbBook, RatingStat } from "@/lib/library";
 
 type Props = {
   id: string;
   eyebrow: string;
   title: string;
   description: string;
-  books: Book[];
+  books: DbBook[];
+  categoryNames?: Map<string, string> | undefined;
+  stats?: Map<string, RatingStat> | undefined;
+  loading?: boolean | undefined;
 };
 
-export function BookCarousel({ id, eyebrow, title, description, books }: Props) {
+export function BookCarousel({
+  id,
+  eyebrow,
+  title,
+  description,
+  books,
+  categoryNames,
+  stats,
+  loading,
+}: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<DbBook | null>(null);
 
   const scrollBy = (dir: number) => {
     trackRef.current?.scrollBy({ left: dir * 480, behavior: "smooth" });
@@ -46,16 +60,37 @@ export function BookCarousel({ id, eyebrow, title, description, books }: Props) 
         </div>
       </div>
 
-      <div
-        ref={trackRef}
-        className="no-scrollbar mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2"
-      >
-        {books.map((b) => (
-          <div key={b.id} className="snap-start">
-            <BookCard book={b} />
-          </div>
-        ))}
-      </div>
+      {loading ? (
+        <div className="mt-10 flex justify-center text-muted-foreground">
+          <Loader2 className="size-6 animate-spin" />
+        </div>
+      ) : books.length === 0 ? (
+        <p className="mt-10 text-sm text-muted-foreground">
+          Nenhum título nesta seção por enquanto.
+        </p>
+      ) : (
+        <div
+          ref={trackRef}
+          className="no-scrollbar mt-8 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2"
+        >
+          {books.map((b) => (
+            <div key={b.id} className="snap-start">
+              <BookCard
+                book={b}
+                categoryName={
+                  (b.category_id && categoryNames?.get(b.category_id)) || undefined
+                }
+                stat={stats?.get(b.id)}
+                onOpen={setSelected}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selected && (
+        <BookDetailDialog book={selected} onClose={() => setSelected(null)} />
+      )}
     </section>
   );
 }

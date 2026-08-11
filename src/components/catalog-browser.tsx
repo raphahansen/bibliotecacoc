@@ -1,32 +1,35 @@
-import { useMemo, useState } from "react";
-import { Search, X, BookOpen, Library } from "lucide-react";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { Loader2, Search, X } from "lucide-react";
 import {
-  catalog,
-  levels,
+  bookTone,
+  fetchCatalog,
+  fetchCategories,
+  fetchPublishers,
   levelLabel,
-  bookCategories,
-  type LibraryBook,
-} from "@/data/catalog";
+  levelOptions,
+  type DbBook,
+} from "@/lib/library";
+import { BookDetailDialog } from "./book-detail-dialog";
 
 type Props = {
-  lockedCategory?: string;
-  initialQuery?: string;
-  initialLevel?: string;
+  lockedCategoryId?: string | undefined;
+  initialQuery?: string | undefined;
+  initialLevel?: string | undefined;
 };
 
-const PAGE = 24;
+const PAGE_SIZE = 24;
 
-const tones = [
-  "oklch(0.42 0.075 42)",
-  "oklch(0.47 0.09 30)",
-  "oklch(0.38 0.06 60)",
-  "oklch(0.5 0.08 20)",
-  "oklch(0.44 0.07 80)",
-  "oklch(0.36 0.05 40)",
-];
-
-function BookTile({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
-  const tone = tones[book.id.length % tones.length]!;
+function BookTile({
+  book,
+  categoryName,
+  onOpen,
+}: {
+  book: DbBook;
+  categoryName: string;
+  onOpen: () => void;
+}) {
+  const tone = bookTone(book.id);
   return (
     <button
       onClick={onOpen}
@@ -41,12 +44,21 @@ function BookTile({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
         <div className="absolute inset-y-0 left-0 w-2 bg-black/25" />
         <div className="flex h-full flex-col justify-between p-3 pl-5">
           <span className="text-[0.55rem] uppercase tracking-[0.18em] text-primary-foreground/70">
-            {book.category}
+            {categoryName}
           </span>
           <span className="font-display text-sm leading-tight text-primary-foreground line-clamp-4">
             {book.title}
           </span>
         </div>
+        <span
+          className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[0.6rem] font-semibold ${
+            book.available_copies > 0
+              ? "bg-[image:var(--gradient-gold)] text-accent-foreground"
+              : "bg-black/45 text-white"
+          }`}
+        >
+          {book.available_copies > 0 ? "Disponível" : "Emprestado"}
+        </span>
       </div>
       <p className="mt-2 line-clamp-2 text-sm font-semibold text-foreground">
         {book.title}
@@ -60,41 +72,76 @@ function BookTile({ book, onOpen }: { book: LibraryBook; onOpen: () => void }) {
 }
 
 export function CatalogBrowser({
-  lockedCategory,
+  lockedCategoryId,
   initialQuery = "",
   initialLevel = "",
 }: Props) {
+  const [qInput, setQInput] = useState(initialQuery);
   const [q, setQ] = useState(initialQuery);
-  const [category, setCategory] = useState(lockedCategory ?? "");
+  const [categoryId, setCategoryId] = useState(lockedCategoryId ?? "");
   const [level, setLevel] = useState(initialLevel);
+  const [publisher, setPublisher] = useState("");
   const [onlyCollection, setOnlyCollection] = useState(false);
-  const [visible, setVisible] = useState(PAGE);
-  const [selected, setSelected] = useState<LibraryBook | null>(null);
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [sort, setSort] = useState<"title" | "recent" | "author">("title");
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<DbBook | null>(null);
 
-  const results = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return catalog.filter((b) => {
-      if (lockedCategory ? b.category !== lockedCategory : category && b.category !== category)
-        return false;
-      if (level && b.level !== level) return false;
-      if (onlyCollection && !b.collection) return false;
-      if (!term) return true;
-      return (
-        b.title.toLowerCase().includes(term) ||
-        b.author.toLowerCase().includes(term) ||
-        b.category.toLowerCase().includes(term) ||
-        b.publisher.toLowerCase().includes(term)
-      );
-    });
-  }, [q, category, level, onlyCollection, lockedCategory]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQ(qInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+  });
+  const publishersQuery = useQuery({
+    queryKey: ["publishers"],
+    queryFn: fetchPublishers,
+  });
+
+  const filters = {
+    q,
+    categoryId: lockedCategoryId ?? categoryId,
+    level,
+    publisher,
+    onlyCollection,
+    onlyAvailable,
+    sort,
+    page,
+    pageSize: PAGE_SIZE,
+  };
+
+  const catalogQuery = useQuery({
+    queryKey: ["catalog", filters],
+    queryFn: () => fetchCatalog(filters),
+    placeholderData: keepPreviousData,
+  });
+
+  const categoryNames = new Map(
+    (categoriesQuery.data ?? []).map((c) => [c.id, c.name]),
+  );
+  const books = catalogQuery.data?.books ?? [];
+  const total = catalogQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const reset = () => {
-    setQ("");
-    if (!lockedCategory) setCategory("");
+    setQInput("");
+    if (!lockedCategoryId) setCategoryId("");
     setLevel("");
+    setPublisher("");
     setOnlyCollection(false);
-    setVisible(PAGE);
+    setOnlyAvailable(false);
+    setSort("title");
+    setPage(0);
   };
+
+  const selectClass =
+    "rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground outline-none";
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 lg:px-8">
@@ -102,31 +149,28 @@ export function CatalogBrowser({
         <label className="flex items-center gap-3 rounded-full border border-border bg-secondary/60 px-5 py-3 focus-within:border-primary-soft focus-within:bg-card">
           <Search className="size-4 shrink-0 text-muted-foreground" />
           <input
-            value={q}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setVisible(PAGE);
-            }}
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
             type="search"
-            placeholder="Buscar por título, autor, categoria ou editora…"
+            placeholder="Buscar por título, autor ou editora…"
             className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </label>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          {!lockedCategory && (
+          {!lockedCategoryId && (
             <select
-              value={category}
+              value={categoryId}
               onChange={(e) => {
-                setCategory(e.target.value);
-                setVisible(PAGE);
+                setCategoryId(e.target.value);
+                setPage(0);
               }}
-              className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground outline-none"
+              className={selectClass}
             >
               <option value="">Todas as categorias</option>
-              {bookCategories.map((c) => (
-                <option key={c.slug} value={c.name}>
-                  {c.name} ({c.count})
+              {(categoriesQuery.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -136,22 +180,65 @@ export function CatalogBrowser({
             value={level}
             onChange={(e) => {
               setLevel(e.target.value);
-              setVisible(PAGE);
+              setPage(0);
             }}
-            className="rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground outline-none"
+            className={selectClass}
           >
             <option value="">Toda classificação indicativa</option>
-            {levels.map((l) => (
+            {levelOptions.map((l) => (
               <option key={l.value} value={l.value}>
                 {l.label}
               </option>
             ))}
           </select>
 
+          <select
+            value={publisher}
+            onChange={(e) => {
+              setPublisher(e.target.value);
+              setPage(0);
+            }}
+            className={selectClass}
+          >
+            <option value="">Todas as editoras</option>
+            {(publishersQuery.data ?? []).map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as typeof sort);
+              setPage(0);
+            }}
+            className={selectClass}
+          >
+            <option value="title">Ordenar por título</option>
+            <option value="author">Ordenar por autor</option>
+            <option value="recent">Mais recentes</option>
+          </select>
+
+          <button
+            onClick={() => {
+              setOnlyAvailable((v) => !v);
+              setPage(0);
+            }}
+            className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+              onlyAvailable
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-primary hover:bg-secondary"
+            }`}
+          >
+            Somente disponíveis
+          </button>
+
           <button
             onClick={() => {
               setOnlyCollection((v) => !v);
-              setVisible(PAGE);
+              setPage(0);
             }}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
               onlyCollection
@@ -169,84 +256,64 @@ export function CatalogBrowser({
             <X className="size-4" /> Limpar filtros
           </button>
 
-          <span className="ml-auto text-sm text-muted-foreground">
-            {results.length} {results.length === 1 ? "título" : "títulos"}
+          <span className="ml-auto inline-flex items-center gap-2 text-sm text-muted-foreground">
+            {catalogQuery.isFetching && <Loader2 className="size-4 animate-spin" />}
+            {total} {total === 1 ? "título" : "títulos"}
           </span>
         </div>
       </div>
 
-      {results.length === 0 ? (
+      {catalogQuery.isError ? (
+        <p className="mt-12 text-center text-sm text-destructive">
+          Não foi possível carregar o acervo. Tente novamente.
+        </p>
+      ) : catalogQuery.isLoading ? (
+        <div className="mt-12 flex justify-center text-muted-foreground">
+          <Loader2 className="size-6 animate-spin" />
+        </div>
+      ) : books.length === 0 ? (
         <p className="mt-12 text-center text-sm text-muted-foreground">
           Nenhum título encontrado com esses filtros.
         </p>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-          {results.slice(0, visible).map((b) => (
-            <BookTile key={b.id} book={b} onOpen={() => setSelected(b)} />
+          {books.map((b) => (
+            <BookTile
+              key={b.id}
+              book={b}
+              categoryName={
+                (b.category_id && categoryNames.get(b.category_id)) || "Acervo"
+              }
+              onOpen={() => setSelected(b)}
+            />
           ))}
         </div>
       )}
 
-      {visible < results.length && (
-        <div className="mt-8 flex justify-center">
+      {total > PAGE_SIZE && (
+        <div className="mt-8 flex items-center justify-center gap-3">
           <button
-            onClick={() => setVisible((v) => v + PAGE * 2)}
-            className="rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.03]"
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="rounded-full border border-border px-4 py-2 text-sm text-primary disabled:opacity-40"
           >
-            Carregar mais títulos
+            Anterior
+          </button>
+          <span className="text-sm text-muted-foreground">
+            Página {page + 1} de {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page + 1 >= totalPages}
+            className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+          >
+            Próxima
           </button>
         </div>
       )}
 
       {selected && (
-        <div
-          className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4 backdrop-blur-sm"
-          onClick={() => setSelected(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-lift)]"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  {selected.category}
-                </p>
-                <h3 className="mt-1 font-display text-2xl text-primary">
-                  {selected.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">{selected.author}</p>
-              </div>
-              <button
-                aria-label="Fechar"
-                onClick={() => setSelected(null)}
-                className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-primary hover:bg-secondary"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 font-medium text-primary">
-                <BookOpen className="size-3.5" /> {levelLabel(selected.level)}
-              </span>
-              {selected.publisher && (
-                <span className="rounded-full bg-secondary px-3 py-1 text-muted-foreground">
-                  {selected.publisher}
-                </span>
-              )}
-              {selected.collection && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[image:var(--gradient-gold)] px-3 py-1 font-medium text-accent-foreground">
-                  <Library className="size-3.5" /> Coleção
-                </span>
-              )}
-            </div>
-
-            <p className="mt-5 text-sm leading-relaxed text-foreground/85">
-              {selected.synopsis || "Sinopse não informada na planilha do acervo."}
-            </p>
-          </div>
-        </div>
+        <BookDetailDialog book={selected} onClose={() => setSelected(null)} />
       )}
     </section>
   );

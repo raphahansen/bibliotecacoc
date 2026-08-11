@@ -3,11 +3,11 @@ import { ArrowLeft } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CatalogBrowser } from "@/components/catalog-browser";
-import { categoryBySlug } from "@/data/catalog";
+import { fetchCategoryBySlug } from "@/lib/library";
 
 export const Route = createFileRoute("/categoria/$slug")({
-  loader: ({ params }) => {
-    const category = categoryBySlug(params.slug);
+  loader: async ({ params }) => {
+    const category = await fetchCategoryBySlug(params.slug);
     if (!category) throw notFound();
     return { category };
   },
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/categoria/$slug")({
       };
     }
     const title = `${loaderData.category.name} · Biblioteca COC Novomundo`;
-    const description = `${loaderData.category.count} títulos da prateleira ${loaderData.category.name} na Biblioteca COC Novomundo, com sinopses e classificação indicativa.`;
+    const description = `Títulos da prateleira ${loaderData.category.name} na Biblioteca COC Novomundo, com sinopses, classificação indicativa e disponibilidade para reserva.`;
     return {
       meta: [
         { title },
@@ -33,24 +33,45 @@ export const Route = createFileRoute("/categoria/$slug")({
       ],
     };
   },
+  errorComponent: CategoriaErro,
   notFoundComponent: CategoriaNaoEncontrada,
   component: CategoriaPage,
 });
 
-function CategoriaNaoEncontrada() {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-3xl px-4 pt-40 text-center">
-        <h1 className="font-display text-3xl text-primary">
-          Categoria não encontrada
-        </h1>
-        <Link to="/" className="mt-4 inline-block text-sm text-primary underline">
-          Voltar para o início
-        </Link>
-      </main>
+      <main className="mx-auto max-w-3xl px-4 pt-40 text-center">{children}</main>
       <SiteFooter />
     </div>
+  );
+}
+
+function CategoriaErro() {
+  return (
+    <Shell>
+      <h1 className="font-display text-3xl text-primary">
+        Não foi possível carregar esta categoria
+      </h1>
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm text-primary underline"
+      >
+        Voltar para o início
+      </Link>
+    </Shell>
+  );
+}
+
+function CategoriaNaoEncontrada() {
+  return (
+    <Shell>
+      <h1 className="font-display text-3xl text-primary">Categoria não encontrada</h1>
+      <Link to="/" className="mt-4 inline-block text-sm text-primary underline">
+        Voltar para o início
+      </Link>
+    </Shell>
   );
 }
 
@@ -73,10 +94,10 @@ function CategoriaPage() {
             {category.name}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {category.count} títulos nesta prateleira do acervo.
+            Títulos desta prateleira do acervo, com sinopse, disponibilidade e reserva.
           </p>
         </div>
-        <CatalogBrowser lockedCategory={category.name} />
+        <CatalogBrowser lockedCategoryId={category.id} />
       </main>
       <SiteFooter />
     </div>

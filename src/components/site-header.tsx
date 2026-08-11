@@ -10,7 +10,7 @@ const links = [
   { label: "Destaques", href: "/#destaques" },
   { label: "Clube Leitor", href: "/#clube" },
   { label: "Leitor do Mês", href: "/#leitor-do-mes" },
-  { label: "Agenda", href: "/#agenda" },
+  
 ];
 
 export function SiteHeader() {

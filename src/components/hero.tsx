@@ -1,7 +1,24 @@
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Search, Library, Sparkles } from "lucide-react";
 import heroImage from "@/assets/hero-library.jpg";
+import { fetchLibraryStats } from "@/lib/library";
+
+const nf = new Intl.NumberFormat("pt-BR");
 
 export function Hero() {
+  const navigate = useNavigate();
+  const [term, setTerm] = useState("");
+  const statsQuery = useQuery({
+    queryKey: ["library-stats"],
+    queryFn: fetchLibraryStats,
+  });
+  const stats = statsQuery.data;
+
+  const goToCatalog = () =>
+    navigate({ to: "/acervo", search: { q: term.trim(), nivel: "" } });
+
   return (
     <section id="inicio" className="px-4 pt-28 lg:px-8 lg:pt-36">
       <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] shadow-[var(--shadow-lift)]">
@@ -24,29 +41,39 @@ export function Hero() {
             Cada página aberta é um mundo novo esperando por você.
           </h1>
           <p className="animate-rise max-w-xl text-sm text-primary-foreground/80 sm:text-base">
-            Descubra mais de 2.000 títulos organizados por categoria, leia avaliações de
+            Descubra {stats ? nf.format(stats.books) : "milhares de"} títulos organizados por categoria, leia avaliações de
             outros estudantes e monte sua própria estante de leitura.
           </p>
 
           <div className="animate-rise flex w-full max-w-2xl flex-col gap-3 sm:flex-row">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                goToCatalog();
+              }}
+              className="flex flex-1"
+            >
             <label className="flex flex-1 items-center gap-3 rounded-full bg-card px-5 py-3.5 shadow-[var(--shadow-card)]">
               <Search className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="search"
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
                 placeholder="O que você quer ler hoje?"
                 className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
               />
             </label>
-            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-[image:var(--gradient-gold)] px-7 py-3.5 text-sm font-semibold text-accent-foreground shadow-[var(--shadow-card)] transition-transform hover:scale-[1.03]">
+            </form>
+            <button onClick={goToCatalog} className="inline-flex items-center justify-center gap-2 rounded-full bg-[image:var(--gradient-gold)] px-7 py-3.5 text-sm font-semibold text-accent-foreground shadow-[var(--shadow-card)] transition-transform hover:scale-[1.03]">
               <Library className="size-4" /> Explorar acervo
             </button>
           </div>
 
           <dl className="animate-rise mt-2 flex flex-wrap gap-x-10 gap-y-4">
             {[
-              ["2.147", "Títulos no acervo"],
-              ["28", "Categorias"],
-              ["1.860", "Empréstimos em 2026"],
+              [stats ? nf.format(stats.books) : "—", "Títulos no acervo"],
+              [stats ? nf.format(stats.categories) : "—", "Categorias"],
+              [stats ? nf.format(stats.loans) : "—", "Empréstimos registrados"],
             ].map(([value, label]) => (
               <div key={label}>
                 <dt className="font-display text-2xl text-gold-soft">{value}</dt>

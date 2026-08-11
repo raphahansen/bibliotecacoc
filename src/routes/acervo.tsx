@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CatalogBrowser } from "@/components/catalog-browser";
-import { catalog } from "@/data/catalog";
 
 const title = "Acervo completo · Biblioteca COC Novomundo";
 const description =
@@ -41,9 +40,9 @@ function AcervoPage() {
             Acervo completo
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            {catalog.length} títulos catalogados por prateleira, com sinopse e
-            classificação indicativa. Use a busca e os filtros para encontrar sua
-            próxima leitura.
+            Todos os títulos catalogados por prateleira, com sinopse, classificação
+            indicativa e disponibilidade em tempo real. Use a busca e os filtros para
+            encontrar sua próxima leitura.
           </p>
         </div>
         <CatalogBrowser key={q + nivel} initialQuery={q} initialLevel={nivel} />
