@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, RotateCcw } from "lucide-react";
+import { Loader2, Search, Plus, Check, X, RotateCcw, BookOpen, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -41,10 +41,24 @@ function Empty({ text }: { text: string }) {
 
 /* ---------------------------------- Livros --------------------------------- */
 
+type BookRow = {
+  id: string;
+  title: string;
+  author: string;
+  publisher: string;
+  level: string;
+  total_copies: number;
+  available_copies: number;
+  active: boolean;
+  category_id: string | null;
+  synopsis: string;
+};
+
 export function BooksAdmin() {
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "",
     author: "",
@@ -72,22 +86,16 @@ export function BooksAdmin() {
     queryFn: async () => {
       let query = supabase
         .from("books")
-        .select("id, title, author, level, total_copies, available_copies, active")
+        .select(
+          "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis",
+        )
         .order("title")
         .limit(40);
       const term = q.trim().replace(/[,%()]/g, " ");
       if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
       const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as {
-        id: string;
-        title: string;
-        author: string;
-        level: string;
-        total_copies: number;
-        available_copies: number;
-        active: boolean;
-      }[];
+      return (data ?? []) as BookRow[];
     },
   });
 
@@ -97,10 +105,9 @@ export function BooksAdmin() {
       patch,
     }: {
       id: string;
-      patch: { active?: boolean; total_copies?: number; available_copies?: number };
+      patch: Partial<BookRow>;
     }) => {
       const { error } = await supabase.from("books").update(patch).eq("id", id);
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -143,6 +150,44 @@ export function BooksAdmin() {
     },
     onError: (e: Error) => toast.error(e.message || "Não foi possível cadastrar."),
   });
+
+  const startEdit = (b: BookRow) => {
+    setEditingId(b.id);
+    setForm({
+      title: b.title,
+      author: b.author,
+      publisher: b.publisher,
+      level: b.level,
+      category_id: b.category_id || "",
+      total_copies: b.total_copies,
+      synopsis: b.synopsis,
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editingId) return;
+    const current = books.data?.find((b) => b.id === editingId);
+    const total = Number(form.total_copies);
+    const diff = total - (current?.total_copies ?? total);
+    update.mutate(
+      {
+        id: editingId,
+        patch: {
+          title: form.title.trim(),
+          author: form.author.trim(),
+          publisher: form.publisher.trim(),
+          level: form.level,
+          category_id: form.category_id || null,
+          total_copies: total,
+          available_copies: Math.max(0, (current?.available_copies ?? total) + diff),
+          synopsis: form.synopsis.trim(),
+        },
+      },
+      {
+        onSuccess: () => setEditingId(null),
+      },
+    );
+  };
 
   return (
     <Card title="Livros">
@@ -233,44 +278,124 @@ export function BooksAdmin() {
         {books.data?.map((b) => (
           <div
             key={b.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
+            className="rounded-2xl border border-border bg-background px-4 py-3"
           >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-foreground">{b.title}</p>
-              <p className="truncate text-xs text-muted-foreground">{b.author}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                Exemplares
+            {editingId === b.id ? (
+              <div className="grid gap-3 sm:grid-cols-2">
                 <input
-                  type="number"
-                  min={0}
-                  defaultValue={b.total_copies}
-                  onBlur={(e) => {
-                    const total = Number(e.target.value);
-                    if (total === b.total_copies) return;
-                    const diff = total - b.total_copies;
-                    update.mutate({
-                      id: b.id,
-                      patch: {
-                        total_copies: total,
-                        available_copies: Math.max(0, b.available_copies + diff),
-                      },
-                    });
-                  }}
-                  className="w-16 rounded-lg border border-border bg-card px-2 py-1 text-xs"
+                  className={input}
+                  placeholder="Título"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
                 />
-              </label>
-              <span className="rounded-full bg-secondary px-3 py-1 text-xs text-primary">
-                {b.available_copies} disp.
-              </span>
-              <button
-                className={ghostBtn}
-                onClick={() => update.mutate({ id: b.id, patch: { active: !b.active } })}
-              >
-                {b.active ? "Desativar" : "Ativar"}
-              </button>
-            </div>
+                <input
+                  className={input}
+                  placeholder="Autor"
+                  value={form.author}
+                  onChange={(e) => setForm({ ...form, author: e.target.value })}
+                />
+                <input
+                  className={input}
+                  placeholder="Editora"
+                  value={form.publisher}
+                  onChange={(e) => setForm({ ...form, publisher: e.target.value })}
+                />
+                <select
+                  className={input}
+                  value={form.category_id}
+                  onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                >
+                  <option value="">Sem categoria</option>
+                  {categories.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className={input}
+                  value={form.level}
+                  onChange={(e) => setForm({ ...form, level: e.target.value })}
+                >
+                  <option value="livre">Livre</option>
+                  <option value="fundamental1">Fundamental I</option>
+                  <option value="fundamental2">Fundamental II</option>
+                  <option value="medio">Ensino Médio</option>
+                </select>
+                <input
+                  className={input}
+                  type="number"
+                  min={1}
+                  placeholder="Exemplares"
+                  value={form.total_copies}
+                  onChange={(e) => setForm({ ...form, total_copies: Number(e.target.value) })}
+                />
+                <textarea
+                  className={`${input} sm:col-span-2`}
+                  rows={3}
+                  placeholder="Sinopse"
+                  value={form.synopsis}
+                  onChange={(e) => setForm({ ...form, synopsis: e.target.value })}
+                />
+                <div className="flex gap-2 sm:col-span-2">
+                  <button
+                    onClick={saveEdit}
+                    disabled={update.isPending}
+                    className={primaryBtn}
+                  >
+                    {update.isPending && <Loader2 className="size-4 animate-spin" />} Salvar
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    className={ghostBtn}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{b.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{b.author}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                    Exemplares
+                    <input
+                      type="number"
+                      min={0}
+                      defaultValue={b.total_copies}
+                      onBlur={(e) => {
+                        const total = Number(e.target.value);
+                        if (total === b.total_copies) return;
+                        const diff = total - b.total_copies;
+                        update.mutate({
+                          id: b.id,
+                          patch: {
+                            total_copies: total,
+                            available_copies: Math.max(0, b.available_copies + diff),
+                          },
+                        });
+                      }}
+                      className="w-16 rounded-lg border border-border bg-card px-2 py-1 text-xs"
+                    />
+                  </label>
+                  <span className="rounded-full bg-secondary px-3 py-1 text-xs text-primary">
+                    {b.available_copies} disp.
+                  </span>
+                  <button className={ghostBtn} onClick={() => startEdit(b)}>
+                    Editar
+                  </button>
+                  <button
+                    className={ghostBtn}
+                    onClick={() => update.mutate({ id: b.id, patch: { active: !b.active } })}
+                  >
+                    {b.active ? "Desativar" : "Ativar"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {books.data?.length === 0 && <Empty text="Nenhum livro encontrado." />}
@@ -436,6 +561,9 @@ export function ReservationsAdmin() {
 
 export function LoansAdmin() {
   const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ user_id: "", book_id: "" });
+
   const loans = useQuery({
     queryKey: ["admin-loans"],
     queryFn: async () => {
@@ -458,6 +586,84 @@ export function LoansAdmin() {
         profiles: { full_name: string; email: string } | null;
       }[];
     },
+  });
+
+  const users = useQuery({
+    queryKey: ["admin-loan-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("active", true)
+        .order("full_name")
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []) as { id: string; full_name: string; email: string }[];
+    },
+    enabled: creating,
+  });
+
+  const books = useQuery({
+    queryKey: ["admin-loan-books"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("books")
+        .select("id, title, author, available_copies")
+        .eq("active", true)
+        .gt("available_copies", 0)
+        .order("title")
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []) as { id: string; title: string; author: string; available_copies: number }[];
+    },
+    enabled: creating,
+  });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!form.user_id || !form.book_id) throw new Error("Selecione leitor e livro");
+      const { data: setting } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "loan_days")
+        .maybeSingle();
+      const days = Number((setting as { value: string } | null)?.value ?? 15);
+      const due = new Date();
+      due.setDate(due.getDate() + days);
+
+      const { data: book, error: bookError } = await supabase
+        .from("books")
+        .select("available_copies")
+        .eq("id", form.book_id)
+        .single();
+      if (bookError) throw bookError;
+      if ((book as { available_copies: number }).available_copies < 1) {
+        throw new Error("Sem exemplares disponíveis");
+      }
+
+      const { error: loanError } = await supabase.from("loans").insert({
+        user_id: form.user_id,
+        book_id: form.book_id,
+        due_date: due.toISOString().slice(0, 10),
+        status: "ativo",
+      });
+      if (loanError) throw loanError;
+
+      await supabase
+        .from("books")
+        .update({
+          available_copies: (book as { available_copies: number }).available_copies - 1,
+        })
+        .eq("id", form.book_id);
+    },
+    onSuccess: () => {
+      toast.success("Empréstimo registrado no balcão.");
+      setCreating(false);
+      setForm({ user_id: "", book_id: "" });
+      void qc.invalidateQueries({ queryKey: ["admin-loans"] });
+      void qc.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível registrar o empréstimo."),
   });
 
   const giveBack = useMutation({
@@ -484,8 +690,59 @@ export function LoansAdmin() {
 
   return (
     <Card title="Empréstimos">
-      {loans.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
-      <div className="grid gap-2">
+      <button onClick={() => setCreating((v) => !v)} className={primaryBtn}>
+        <Plus className="size-4" /> Empréstimo no balcão
+      </button>
+
+      {creating && (
+        <div className="mt-4 grid gap-3 rounded-2xl border border-border bg-background p-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Leitor</label>
+            <select
+              className={input}
+              value={form.user_id}
+              onChange={(e) => setForm({ ...form, user_id: e.target.value })}
+            >
+              <option value="">Selecione um leitor</option>
+              {users.data?.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name || u.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Livro disponível</label>
+            <select
+              className={input}
+              value={form.book_id}
+              onChange={(e) => setForm({ ...form, book_id: e.target.value })}
+            >
+              <option value="">Selecione um livro</option>
+              {books.data?.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title} — {b.author} ({b.available_copies} disp.)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2 sm:col-span-2">
+            <button
+              onClick={() => create.mutate()}
+              disabled={create.isPending}
+              className={primaryBtn}
+            >
+              {create.isPending && <Loader2 className="size-4 animate-spin" />} Registrar retirada
+            </button>
+            <button onClick={() => setCreating(false)} className={ghostBtn}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-2">
+        {loans.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
         {loans.data?.map((l) => {
           const late = !l.returned_at && new Date(l.due_date) < today;
           return (
