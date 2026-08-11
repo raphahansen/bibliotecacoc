@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       book_copies: {
         Row: {
+          active: boolean
           asset_code: string
           book_id: string
           condition: string
@@ -27,6 +28,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           asset_code: string
           book_id: string
           condition?: string
@@ -38,6 +40,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           asset_code?: string
           book_id?: string
           condition?: string
@@ -123,6 +126,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          is_system: boolean
           name: string
           slug: string
         }
@@ -131,6 +135,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           name: string
           slug: string
         }
@@ -139,6 +144,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           name?: string
           slug?: string
         }
@@ -157,7 +163,7 @@ export type Database = {
           returned_at: string | null
           status: Database["public"]["Enums"]["loan_status"]
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           book_id: string
@@ -171,7 +177,7 @@ export type Database = {
           returned_at?: string | null
           status?: Database["public"]["Enums"]["loan_status"]
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           book_id?: string
@@ -185,7 +191,7 @@ export type Database = {
           returned_at?: string | null
           status?: Database["public"]["Enums"]["loan_status"]
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -207,6 +213,13 @@ export type Database = {
             columns: ["reservation_id"]
             isOneToOne: false
             referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loans_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -253,7 +266,7 @@ export type Database = {
           queue_position: number | null
           status: Database["public"]["Enums"]["reservation_status"]
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           book_id: string
@@ -263,7 +276,7 @@ export type Database = {
           queue_position?: number | null
           status?: Database["public"]["Enums"]["reservation_status"]
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           book_id?: string
@@ -273,7 +286,7 @@ export type Database = {
           queue_position?: number | null
           status?: Database["public"]["Enums"]["reservation_status"]
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -281,6 +294,13 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -293,7 +313,7 @@ export type Database = {
           id: string
           rating: number
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           book_id: string
@@ -302,7 +322,7 @@ export type Database = {
           id?: string
           rating: number
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           book_id?: string
@@ -311,7 +331,7 @@ export type Database = {
           id?: string
           rating?: number
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -319,6 +339,13 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_user_id_profiles_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -408,6 +435,7 @@ export type Database = {
           _quantity?: number
         }
         Returns: {
+          active: boolean
           asset_code: string
           book_id: string
           condition: string
@@ -425,6 +453,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      delete_category_reassign: { Args: { _id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
