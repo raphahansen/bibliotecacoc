@@ -1595,8 +1595,10 @@ type AdminReviewRow = {
   rating: number;
   comment: string;
   created_at: string;
-  books: { title: string; author: string } | null;
-  profiles: { full_name: string; email: string } | null;
+  book_title: string | null;
+  book_author: string | null;
+  reviewer_name: string | null;
+  reviewer_email: string | null;
 };
 
 export function ReviewsAdmin() {
@@ -1607,11 +1609,7 @@ export function ReviewsAdmin() {
   const reviews = useQuery({
     queryKey: ["admin-reviews"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("id, rating, comment, created_at, books(title, author), profiles(full_name, email)")
-        .order("created_at", { ascending: false })
-        .limit(300);
+      const { data, error } = await supabase.rpc("admin_list_reviews", { _limit: 300 });
       if (error) throw error;
       return (data ?? []) as unknown as AdminReviewRow[];
     },
@@ -1636,7 +1634,7 @@ export function ReviewsAdmin() {
     const rows = reviews.data ?? [];
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.books?.title, r.books?.author, r.profiles?.full_name, r.profiles?.email]
+      [r.book_title, r.book_author, r.reviewer_name, r.reviewer_email]
         .filter(Boolean)
         .some((v) => (v as string).toLowerCase().includes(q)),
     );
@@ -1664,10 +1662,10 @@ export function ReviewsAdmin() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
-                  {r.books?.title ?? "—"}
+                  {r.book_title ?? "—"}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {r.profiles?.full_name || r.profiles?.email || "Leitor"} ·{" "}
+                  {r.reviewer_name || r.reviewer_email || "Leitor"} ·{" "}
                   {new Date(r.created_at).toLocaleDateString("pt-BR")}
                 </p>
               </div>
