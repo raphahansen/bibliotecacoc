@@ -292,11 +292,12 @@ export async function deleteReview(reviewId: string) {
 
 export const levelOptions: { value: string; label: string }[] = [
   { value: "LIVRE", label: "Livre" },
-  { value: "EF01 - ENSINO FUNDAMENTAL I", label: "Fundamental I" },
-  { value: "EF02 - 6º-7º - ENSINO FUNDAMENTAL II", label: "Fundamental II · 6º-7º" },
-  { value: "EF02 - 8º-9º - ENSINO FUNDAMENTAL II", label: "Fundamental II · 8º-9º" },
+  { value: "EF01 - ENSINO FUNDAMENTAL I", label: "Ensino Fundamental I" },
+  { value: "EF02 - 6º-7º - ENSINO FUNDAMENTAL II", label: "Ensino Fundamental II 6º e 7º anos" },
+  { value: "EF02 - 8º-9º - ENSINO FUNDAMENTAL II", label: "Ensino Fundamental II 8º e 9º anos" },
   { value: "EM - Ensino Médio", label: "Ensino Médio" },
 ];
+
 
 export const levelLabel = (value: string) =>
   levelOptions.find((l) => l.value === value)?.label ?? value;
