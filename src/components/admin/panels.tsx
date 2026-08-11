@@ -1,9 +1,22 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, RotateCcw, BookOpen, UserRound, Layers } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Plus,
+  Check,
+  X,
+  RotateCcw,
+  BookOpen,
+  UserRound,
+  Layers,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  deleteReview,
   loanLabels,
   reservationLabels,
   roleLabels,
@@ -646,12 +659,17 @@ export function LoansAdmin() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("book_copies")
-        .select("id, asset_code")
+        .select("id, asset_code, condition, location")
         .eq("book_id", form.book_id)
         .eq("status", "disponivel")
         .order("asset_code");
       if (error) throw error;
-      return (data ?? []) as { id: string; asset_code: string }[];
+      return (data ?? []) as {
+        id: string;
+        asset_code: string;
+        condition: string;
+        location: string;
+      }[];
     },
     enabled: creating && !!form.book_id,
   });
@@ -766,7 +784,7 @@ export function LoansAdmin() {
               </option>
               {copies.data?.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.asset_code}
+                  {c.asset_code} · {c.condition} · {c.location}
                 </option>
               ))}
             </select>
@@ -797,12 +815,22 @@ export function LoansAdmin() {
               className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {l.books?.title ?? "—"}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {l.books?.title ?? "—"}
+                  </p>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      l.book_copies?.asset_code
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {l.book_copies?.asset_code ?? "sem exemplar registrado"}
+                  </span>
+                </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {l.profiles?.full_name || l.profiles?.email} ·{" "}
-                  {l.book_copies?.asset_code ? `${l.book_copies.asset_code} · ` : ""}devolver até{" "}
+                  {l.profiles?.full_name || l.profiles?.email} · devolver até{" "}
                   {new Date(l.due_date).toLocaleDateString("pt-BR")}
                 </p>
               </div>
@@ -1159,5 +1187,127 @@ export function DashboardAdmin() {
         </div>
       ))}
     </div>
+  );
+}
+
+/* -------------------------------- Avaliações ------------------------------- */
+
+type AdminReviewRow = {
+  id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  books: { title: string; author: string } | null;
+  profiles: { full_name: string; email: string } | null;
+};
+
+export function ReviewsAdmin() {
+  const qc = useQueryClient();
+  const [term, setTerm] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const reviews = useQuery({
+    queryKey: ["admin-reviews"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, books(title, author), profiles(full_name, email)")
+        .order("created_at", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []) as unknown as AdminReviewRow[];
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteReview(id),
+    onSuccess: () => {
+      toast.success("Avaliação excluída.");
+      setConfirmId(null);
+      void qc.invalidateQueries({ queryKey: ["admin-reviews"] });
+      void qc.invalidateQueries({ queryKey: ["admin-stats"] });
+      void qc.invalidateQueries({ queryKey: ["book-reviews"] });
+      void qc.invalidateQueries({ queryKey: ["latest-reviews"] });
+      void qc.invalidateQueries({ queryKey: ["home-sections"] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível excluir a avaliação."),
+  });
+
+  const filtered = useMemo(() => {
+    const q = term.trim().toLowerCase();
+    const rows = reviews.data ?? [];
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.books?.title, r.books?.author, r.profiles?.full_name, r.profiles?.email]
+        .filter(Boolean)
+        .some((v) => (v as string).toLowerCase().includes(q)),
+    );
+  }, [reviews.data, term]);
+
+  return (
+    <Card title="Avaliações">
+      <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3">
+        <Search className="size-4 text-muted-foreground" />
+        <input
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="Buscar por livro ou leitor"
+          className="w-full bg-transparent py-2.5 text-sm text-foreground outline-none"
+        />
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {reviews.isLoading && <Loader2 className="size-5 animate-spin text-muted-foreground" />}
+        {!reviews.isLoading && filtered.length === 0 && (
+          <Empty text="Nenhuma avaliação encontrada." />
+        )}
+        {filtered.map((r) => (
+          <div key={r.id} className="rounded-2xl border border-border bg-background px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {r.books?.title ?? "—"}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {r.profiles?.full_name || r.profiles?.email || "Leitor"} ·{" "}
+                  {new Date(r.created_at).toLocaleDateString("pt-BR")}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
+                  <Star className="size-3 fill-gold text-gold" /> {r.rating}
+                </span>
+                {confirmId === r.id ? (
+                  <>
+                    <button
+                      className={ghostBtn}
+                      disabled={remove.isPending}
+                      onClick={() => remove.mutate(r.id)}
+                    >
+                      {remove.isPending ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Check className="size-3" />
+                      )}
+                      Confirmar exclusão
+                    </button>
+                    <button className={ghostBtn} onClick={() => setConfirmId(null)}>
+                      <X className="size-3" /> Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <button className={ghostBtn} onClick={() => setConfirmId(r.id)}>
+                    <Trash2 className="size-3" /> Excluir
+                  </button>
+                )}
+              </div>
+            </div>
+            {r.comment && (
+              <p className="mt-2 text-sm text-foreground/85">“{r.comment}”</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

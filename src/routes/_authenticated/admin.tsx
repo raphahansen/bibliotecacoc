@@ -10,6 +10,7 @@ import {
   DashboardAdmin,
   LoansAdmin,
   ReservationsAdmin,
+  ReviewsAdmin,
   UsersAdmin,
 } from "@/components/admin/panels";
 import { CopiesAdmin } from "@/components/admin/copies-panel";
@@ -39,6 +40,7 @@ const tabs = [
   "Exemplares",
   "Reservas",
   "Empréstimos",
+  "Avaliações",
   "Usuários",
   "Categorias",
 ] as const;
@@ -109,6 +111,7 @@ function AdminPage() {
           {tab === "Exemplares" && <CopiesAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
+          {tab === "Avaliações" && <ReviewsAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
           {tab === "Categorias" && <CategoriesAdmin />}
         </div>

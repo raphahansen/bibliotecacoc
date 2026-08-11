@@ -285,6 +285,11 @@ export async function fetchLatestReviews(limit = 6) {
   return (data ?? []) as ReviewRow[];
 }
 
+export async function deleteReview(reviewId: string) {
+  const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+  if (error) throw new Error(error.message);
+}
+
 export const levelOptions: { value: string; label: string }[] = [
   { value: "LIVRE", label: "Livre" },
   { value: "EF01 - ENSINO FUNDAMENTAL I", label: "Fundamental I" },

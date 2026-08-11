@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { BookOpen, Library, Loader2, Star, X } from "lucide-react";
+import { BookOpen, Library, Loader2, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createReservation,
+  deleteReview,
   fetchBookReviews,
   fetchMyReservations,
   levelLabel,
@@ -48,10 +49,22 @@ export function BookDetailDialog({
   book: DbBook;
   onClose: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, isStaff } = useAuth();
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+
+  const removeReview = useMutation({
+    mutationFn: (id: string) => deleteReview(id),
+    onSuccess: () => {
+      toast.success("Avaliação excluída.");
+      queryClient.invalidateQueries({ queryKey: ["book-reviews", book.id] });
+      queryClient.invalidateQueries({ queryKey: ["latest-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["home-sections"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-reviews"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const reviewsQuery = useQuery({
     queryKey: ["book-reviews", book.id],
@@ -228,7 +241,19 @@ export function BookDetailDialog({
             <ul className="mt-3 space-y-3">
               {reviews.map((r) => (
                 <li key={r.id} className="rounded-2xl bg-secondary/60 p-4">
-                  <Stars value={r.rating} />
+                  <div className="flex items-start justify-between gap-3">
+                    <Stars value={r.rating} />
+                    {isStaff && (
+                      <button
+                        onClick={() => removeReview.mutate(r.id)}
+                        disabled={removeReview.isPending}
+                        aria-label="Excluir avaliação"
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-destructive disabled:opacity-60"
+                      >
+                        <Trash2 className="size-3" /> Excluir
+                      </button>
+                    )}
+                  </div>
                   {r.comment && (
                     <p className="mt-2 text-sm text-foreground/85">“{r.comment}”</p>
                   )}
