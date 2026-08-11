@@ -36,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 const tabs = [
   "Visão geral",
   "Livros",
+  "Exemplares",
   "Reservas",
   "Empréstimos",
   "Usuários",
