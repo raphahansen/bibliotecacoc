@@ -478,7 +478,7 @@ export function CopiesAdmin() {
   });
 
   return (
-    <Card title="Exemplares e patrimônio">
+    <Card title="Inventário de exemplares">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -496,6 +496,11 @@ export function CopiesAdmin() {
               {label}
             </option>
           ))}
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className={input}>
+          <option value="asset_code">Ordenar por patrimônio</option>
+          <option value="status">Ordenar por situação</option>
+          <option value="recent">Mais recentes</option>
         </select>
         <button className={primaryBtn} onClick={() => setCreating((v) => !v)}>
           <Plus className="size-4" /> Novo exemplar
@@ -537,13 +542,22 @@ export function CopiesAdmin() {
             <Loader2 className="size-4 animate-spin" /> Carregando exemplares…
           </p>
         )}
-        {!copies.isLoading && (copies.data ?? []).length === 0 && (
+        {!copies.isLoading && (copies.data?.rows ?? []).length === 0 && (
           <p className="text-sm text-muted-foreground">Nenhum exemplar encontrado.</p>
         )}
-        {(copies.data ?? []).map((copy) => (
+        {(copies.data?.rows ?? []).map((copy) => (
           <CopyRowItem key={copy.id} copy={copy} showBook />
         ))}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={COPIES_PAGE_SIZE}
+        total={copies.data?.total ?? 0}
+        onPage={setPage}
+        unitLabel="exemplares"
+      />
     </Card>
+
   );
 }
