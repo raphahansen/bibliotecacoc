@@ -742,21 +742,8 @@ export function LoansAdmin() {
     enabled: creating,
   });
 
-  const books = useQuery({
-    queryKey: ["admin-loan-books"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("books")
-        .select("id, title, author, available_copies")
-        .eq("active", true)
-        .gt("available_copies", 0)
-        .order("title")
-        .limit(300);
-      if (error) throw error;
-      return (data ?? []) as { id: string; title: string; author: string; available_copies: number }[];
-    },
-    enabled: creating,
-  });
+  const [book, setBook] = useState<SelectableBook | null>(null);
+
 
   const copies = useQuery({
     queryKey: ["admin-loan-copies", form.book_id],
