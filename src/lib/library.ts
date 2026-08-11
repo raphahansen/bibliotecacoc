@@ -98,17 +98,42 @@ export async function fetchCategories() {
 }
 
 export async function fetchCategoryCounts() {
-  const { data, error } = await supabase
-    .from("books")
-    .select("category_id")
-    .eq("active", true);
-  if (error) throw error;
   const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { category_id: string | null }[]) {
-    if (!row.category_id) continue;
-    counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+  const pageSize = 1000;
+  for (let page = 0; ; page += 1) {
+    const { data, error } = await supabase
+      .from("books")
+      .select("category_id")
+      .eq("active", true)
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as { category_id: string | null }[];
+    for (const row of rows) {
+      if (!row.category_id) continue;
+      counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+    }
+    if (rows.length < pageSize) break;
   }
   return counts;
+}
+
+export async function fetchLibraryStats() {
+  const [books, loans, categories] = await Promise.all([
+    supabase
+      .from("books")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true),
+    supabase.from("loans").select("id", { count: "exact", head: true }),
+    supabase
+      .from("categories")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true),
+  ]);
+  return {
+    books: books.count ?? 0,
+    loans: loans.count ?? 0,
+    categories: categories.count ?? 0,
+  };
 }
 
 export type CatalogFilters = {
@@ -259,4 +284,105 @@ export async function fetchLatestReviews(limit = 6) {
     .limit(limit);
   if (error) throw error;
   return (data ?? []) as ReviewRow[];
+}
+
+export const levelOptions: { value: string; label: string }[] = [
+  { value: "LIVRE", label: "Livre" },
+  { value: "EF01 - ENSINO FUNDAMENTAL I", label: "Fundamental I" },
+  { value: "EF02 - 6º-7º - ENSINO FUNDAMENTAL II", label: "Fundamental II · 6º-7º" },
+  { value: "EF02 - 8º-9º - ENSINO FUNDAMENTAL II", label: "Fundamental II · 8º-9º" },
+  { value: "EM - Ensino Médio", label: "Ensino Médio" },
+];
+
+export const levelLabel = (value: string) =>
+  levelOptions.find((l) => l.value === value)?.label ?? value;
+
+export async function fetchCategoryBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id, name, slug, icon, active")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as DbCategory | null) ?? null;
+}
+
+export type MyReservation = {
+  id: string;
+  book_id: string;
+  status: ReservationStatus;
+  created_at: string;
+};
+
+export async function fetchMyReservations(userId: string) {
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("id, book_id, status, created_at")
+    .eq("user_id", userId)
+    .in("status", ["pendente", "aprovada", "disponivel"]);
+  if (error) throw error;
+  return (data ?? []) as MyReservation[];
+}
+
+/** Cria uma reserva evitando duplicidade para o mesmo leitor/livro. */
+export async function createReservation(userId: string, bookId: string) {
+  const { data: existing, error: checkError } = await supabase
+    .from("reservations")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("book_id", bookId)
+    .in("status", ["pendente", "aprovada", "disponivel"])
+    .maybeSingle();
+  if (checkError) throw checkError;
+  if (existing) throw new Error("Você já tem uma reserva ativa para este título.");
+
+  const { error } = await supabase
+    .from("reservations")
+    .insert({ user_id: userId, book_id: bookId, status: "pendente" });
+  if (error) throw error;
+}
+
+export async function upsertReview(
+  userId: string,
+  bookId: string,
+  rating: number,
+  comment: string,
+) {
+  const { data: existing, error: checkError } = await supabase
+    .from("reviews")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("book_id", bookId)
+    .maybeSingle();
+  if (checkError) throw checkError;
+
+  if (existing) {
+    const { error } = await supabase
+      .from("reviews")
+      .update({ rating, comment })
+      .eq("id", existing.id);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from("reviews")
+    .insert({ user_id: userId, book_id: bookId, rating, comment });
+  if (error) throw error;
+}
+
+export type LatestReview = ReviewRow & {
+  books: { id: string; title: string; author: string; available_copies: number } | null;
+};
+
+export async function fetchLatestReviewsWithBooks(limit = 6) {
+  const { data, error } = await supabase
+    .from("reviews")
+    .select(
+      "id, user_id, book_id, rating, comment, created_at, books(id, title, author, available_copies)",
+    )
+    .neq("comment", "")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as LatestReview[];
 }

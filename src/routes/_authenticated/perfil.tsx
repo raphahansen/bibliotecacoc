@@ -178,6 +178,7 @@ function ProfilePage() {
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               to="/acervo"
+              search={{ q: "", nivel: "" }}
               className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
             >
               Explorar o acervo
