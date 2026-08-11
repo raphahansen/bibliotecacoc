@@ -596,7 +596,7 @@ export function ReservationsAdmin() {
 export function LoansAdmin() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ user_id: "", book_id: "" });
+  const [form, setForm] = useState({ user_id: "", book_id: "", copy_id: "" });
 
   const loans = useQuery({
     queryKey: ["admin-loans"],
