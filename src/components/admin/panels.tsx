@@ -719,11 +719,15 @@ export function LoansAdmin() {
               onChange={(e) => setForm({ ...form, book_id: e.target.value })}
             >
               <option value="">Selecione um livro</option>
-              {books.data?.map((b) => (
-                <option key={b.id} value={b.id} className="truncate">
-                  {b.title} — {b.author} ({b.available_copies} disp.)
-                </option>
-              ))}
+              {books.data?.map((b) => {
+                const title = b.title.length > 45 ? b.title.slice(0, 45) + "…" : b.title;
+                const author = b.author.length > 25 ? b.author.slice(0, 25) + "…" : b.author;
+                return (
+                  <option key={b.id} value={b.id}>
+                    {title} — {author} ({b.available_copies} disp.)
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div className="flex gap-2 sm:col-span-2">
