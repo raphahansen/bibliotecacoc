@@ -114,7 +114,7 @@ export function ReaderClub() {
                     onClick={() => openBook(r.book_id)}
                     className="rounded-full bg-[image:var(--gradient-gold)] px-4 py-2 text-xs font-semibold text-accent-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-105"
                   >
-                    {available ? "Reservar" : "Ver detalhes"}
+                    Ver livro
                   </button>
                 </div>
               </article>
