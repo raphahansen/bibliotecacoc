@@ -106,6 +106,7 @@ function AdminPage() {
         <div className="mt-6 grid gap-5">
           {tab === "Visão geral" && <DashboardAdmin />}
           {tab === "Livros" && <BooksAdmin />}
+          {tab === "Exemplares" && <CopiesAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
