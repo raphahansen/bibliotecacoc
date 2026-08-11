@@ -475,19 +475,6 @@ export function CopiesAdmin() {
   });
 
 
-  const bookOptions = useQuery({
-    queryKey: ["admin-copies-books", bookQuery],
-    enabled: creating,
-    queryFn: async () => {
-      const term = bookQuery.trim().replace(/[,%()]/g, " ");
-      let query = supabase.from("books").select("id, title, author").order("title").limit(20);
-      if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []) as { id: string; title: string; author: string }[];
-    },
-  });
-
   return (
     <Card title="Inventário de exemplares">
       <div className="flex flex-wrap items-center gap-2">
@@ -496,7 +483,7 @@ export function CopiesAdmin() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por código, título ou autor"
+            placeholder="Buscar por código BIB, título ou autor"
             className={`${input} w-full pl-9`}
           />
         </div>
@@ -509,7 +496,7 @@ export function CopiesAdmin() {
           ))}
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)} className={input}>
-          <option value="asset_code">Ordenar por patrimônio</option>
+          <option value="asset_code">Ordenar por código BIB</option>
           <option value="status">Ordenar por situação</option>
           <option value="recent">Mais recentes</option>
         </select>
@@ -523,29 +510,13 @@ export function CopiesAdmin() {
           bookId={bookId}
           onCancel={() => setCreating(false)}
           bookPicker={
-            <>
-              <input
-                value={bookQuery}
-                onChange={(e) => setBookQuery(e.target.value)}
-                placeholder="Buscar livro…"
-                className={input}
-              />
-              <select
-                value={bookId}
-                onChange={(e) => setBookId(e.target.value)}
-                className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
-              >
-                <option value="">Selecione o livro</option>
-                {(bookOptions.data ?? []).map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.title.length > 40 ? `${b.title.slice(0, 40)}…` : b.title} — {b.author.slice(0, 22)}
-                  </option>
-                ))}
-              </select>
-            </>
+            <div className="md:col-span-2">
+              <BookSelector value={book} onChange={setBook} label="Livro" />
+            </div>
           }
         />
       )}
+
 
       <div className="mt-4 grid gap-2">
         {copies.isLoading && (
