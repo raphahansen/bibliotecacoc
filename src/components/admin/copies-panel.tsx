@@ -210,13 +210,12 @@ function CopyRowItem({
   };
 
   const save = useMutation({
-    mutationFn: async (patch: Partial<EditState>) => {
+    mutationFn: async () => {
       const body = {
-        asset_code: (patch.asset_code ?? edit.asset_code).trim(),
-        status: patch.status ?? edit.status,
-        condition: patch.condition ?? edit.condition,
-        location: (patch.location ?? edit.location).trim() || "Biblioteca",
-        notes: (patch.notes ?? edit.notes).trim(),
+        asset_code: edit.asset_code.trim(),
+        condition: edit.condition,
+        location: edit.location.trim() || "Biblioteca",
+        notes: edit.notes.trim(),
       };
       if (body.asset_code.length < 2) throw new Error("Código inválido");
       const { error } = await supabase.from("book_copies").update(body).eq("id", copy.id);
@@ -233,6 +232,19 @@ function CopyRowItem({
       ),
   });
 
+  const writeOff = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("write_off_copy", { _copy_id: copy.id });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Exemplar baixado.");
+      setEditing(false);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message || "Não foi possível dar baixa."),
+  });
+
   const locked = copy.status === "emprestado";
 
   if (editing) {
@@ -244,18 +256,10 @@ function CopyRowItem({
           placeholder="Código patrimonial"
           className={input}
         />
-        <select
-          value={edit.status}
-          onChange={(e) => setEdit({ ...edit, status: e.target.value })}
-          className={input}
-          disabled={locked}
-        >
-          {Object.entries(copyStatusLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className={`${input} flex items-center justify-between gap-2 text-muted-foreground`}>
+          <span>Situação: {copyStatusLabels[copy.status] ?? copy.status}</span>
+          <span className="text-xs">definida por retirada/devolução</span>
+        </div>
         <select
           value={edit.condition}
           onChange={(e) => setEdit({ ...edit, condition: e.target.value })}
@@ -280,7 +284,7 @@ function CopyRowItem({
           className={`${input} md:col-span-2`}
         />
         <div className="flex flex-wrap gap-2 md:col-span-2">
-          <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate({})}>
+          <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
             Salvar
           </button>
@@ -290,9 +294,10 @@ function CopyRowItem({
           {copy.status !== "baixado" && !locked && (
             <button
               className={`${ghostBtn} text-destructive`}
+              disabled={writeOff.isPending}
               onClick={() => {
                 if (confirm("Dar baixa neste exemplar? Ele deixará de ser emprestável, mas o histórico é preservado."))
-                  save.mutate({ status: "baixado" });
+                  writeOff.mutate();
               }}
             >
               <Ban className="size-3.5" /> Dar baixa
