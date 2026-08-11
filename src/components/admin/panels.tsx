@@ -85,7 +85,7 @@ export function BooksAdmin() {
     title: "",
     author: "",
     publisher: "",
-    level: "livre",
+    level: "LIVRE",
     category_id: "",
     initial_copies: 0,
     synopsis: "",
@@ -194,7 +194,7 @@ export function BooksAdmin() {
         title: "",
         author: "",
         publisher: "",
-        level: "livre",
+        level: "LIVRE",
         category_id: "",
         initial_copies: 0,
         synopsis: "",
@@ -277,11 +277,12 @@ export function BooksAdmin() {
           ))}
         </select>
         <select className={input} value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
-          <option value="">Todos os níveis</option>
-          <option value="livre">Livre</option>
-          <option value="fundamental1">Fundamental I</option>
-          <option value="fundamental2">Fundamental II</option>
-          <option value="medio">Ensino Médio</option>
+          <option value="">Todas as classificações</option>
+          {levelOptions.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
         </select>
         <select className={input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">Ativos e inativos</option>
@@ -337,10 +338,11 @@ export function BooksAdmin() {
             value={form.level}
             onChange={(e) => setForm({ ...form, level: e.target.value })}
           >
-            <option value="livre">Livre</option>
-            <option value="fundamental1">Fundamental I</option>
-            <option value="fundamental2">Fundamental II</option>
-            <option value="medio">Ensino Médio</option>
+            {levelOptions.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
           </select>
           <textarea
             className={`${input} sm:col-span-2`}
@@ -418,10 +420,11 @@ export function BooksAdmin() {
                   value={form.level}
                   onChange={(e) => setForm({ ...form, level: e.target.value })}
                 >
-                  <option value="livre">Livre</option>
-                  <option value="fundamental1">Fundamental I</option>
-                  <option value="fundamental2">Fundamental II</option>
-                  <option value="medio">Ensino Médio</option>
+                  {levelOptions.map((l) => (
+                    <option key={l.value} value={l.value}>
+                      {l.label}
+                    </option>
+                  ))}
                 </select>
                 <p className="self-center text-xs text-muted-foreground">
                   A quantidade de exemplares é definida em “Gerenciar exemplares”.
