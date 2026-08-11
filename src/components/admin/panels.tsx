@@ -802,12 +802,22 @@ export function LoansAdmin() {
               className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {l.books?.title ?? "—"}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {l.books?.title ?? "—"}
+                  </p>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      l.book_copies?.asset_code
+                        ? "bg-primary/10 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {l.book_copies?.asset_code ?? "sem exemplar registrado"}
+                  </span>
+                </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {l.profiles?.full_name || l.profiles?.email} ·{" "}
-                  {l.book_copies?.asset_code ? `${l.book_copies.asset_code} · ` : ""}devolver até{" "}
+                  {l.profiles?.full_name || l.profiles?.email} · devolver até{" "}
                   {new Date(l.due_date).toLocaleDateString("pt-BR")}
                 </p>
               </div>
