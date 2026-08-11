@@ -360,7 +360,7 @@ export function BooksAdmin() {
             onChange={(e) => setForm({ ...form, initial_copies: Number(e.target.value) })}
           />
           <p className="self-center text-xs text-muted-foreground">
-            Cada exemplar vira uma unidade física com código de patrimônio próprio.
+            Cada exemplar vira uma unidade física com código BIB próprio.
           </p>
           <button
             onClick={() => create.mutate()}
@@ -658,7 +658,7 @@ export function ReservationsAdmin() {
               <div className="flex w-full min-w-0 flex-wrap items-end gap-2 border-t border-border pt-3">
                 <div className="min-w-0 flex-1">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Exemplar (código de patrimônio)
+                    Exemplar (código BIB)
                   </label>
                   <select
                     className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}
@@ -875,7 +875,7 @@ export function LoansAdmin() {
           </div>
           <div className="min-w-0 sm:col-span-2">
             <label className="text-xs font-medium text-muted-foreground">
-              Exemplar (código de patrimônio)
+              Exemplar (código BIB)
             </label>
             <select
               className={`${input} w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap`}

@@ -73,7 +73,7 @@ function useAddCopies(onDone: () => void) {
     mutationFn: async ({ bookId, state }: { bookId: string; state: NewCopyState }) => {
       if (!bookId) throw new Error("Selecione o livro");
       if (!state.autoCode && state.asset_code.trim().length < 2) {
-        throw new Error("Informe o código de patrimônio ou use a geração automática");
+        throw new Error("Informe o código BIB ou use a geração automática");
       }
       const { error } = await supabase.rpc("add_book_copies", {
         _book_id: bookId,
@@ -127,7 +127,7 @@ function NewCopyForm({
           checked={state.autoCode}
           onChange={(e) => setState({ ...state, autoCode: e.target.checked })}
         />
-        Gerar código de patrimônio automaticamente
+        Gerar código BIB automaticamente
       </label>
       {state.autoCode ? (
         <label className="flex flex-col gap-1 text-sm text-foreground md:col-span-2">
@@ -149,7 +149,7 @@ function NewCopyForm({
         <input
           value={state.asset_code}
           onChange={(e) => setState({ ...state, asset_code: e.target.value })}
-          placeholder="Código patrimonial (ex.: BIB-001234)"
+          placeholder="Código BIB (ex.: BIB-001234)"
           className={input}
         />
       )}
@@ -265,7 +265,7 @@ function CopyRowItem({
         <input
           value={edit.asset_code}
           onChange={(e) => setEdit({ ...edit, asset_code: e.target.value })}
-          placeholder="Código patrimonial"
+          placeholder="Código BIB"
           className={input}
         />
         <div className={`${input} flex items-center justify-between gap-2 text-muted-foreground`}>
