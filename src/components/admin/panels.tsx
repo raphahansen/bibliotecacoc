@@ -781,6 +781,8 @@ export function LoansAdmin() {
       toast.success("Empréstimo registrado no balcão.");
       setCreating(false);
       setForm({ user_id: "", book_id: "", copy_id: "" });
+      setBook(null);
+
       void qc.invalidateQueries({ queryKey: ["admin-loans"] });
       void qc.invalidateQueries({ queryKey: ["admin-stats"] });
     },
