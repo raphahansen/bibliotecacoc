@@ -1,4 +1,4 @@
-import { Clock, Mail, MapPin, Phone, Instagram, Facebook, Youtube } from "lucide-react";
+import { Clock, MapPin, Instagram } from "lucide-react";
 import logo from "@/assets/logo-novomundo-coc.png.asset.json";
 
 export function SiteFooter() {
@@ -32,12 +32,6 @@ export function SiteFooter() {
             <li className="flex items-center gap-2">
               <Clock className="size-4 shrink-0 text-gold" /> Seg a Sex · 09h30 – 10h50
             </li>
-            <li className="flex items-center gap-2">
-              <Clock className="size-4 shrink-0 text-gold" /> Sábado · 08h00 – 12h00
-            </li>
-            <li className="flex items-center gap-2">
-              <Clock className="size-4 shrink-0 text-gold" /> Domingo · Fechado
-            </li>
           </ul>
         </div>
 
@@ -45,13 +39,7 @@ export function SiteFooter() {
           <h3 className="font-display text-base text-gold-soft">Contato</h3>
           <ul className="mt-4 space-y-2 text-sm text-primary-foreground/75">
             <li className="flex items-center gap-2">
-              <MapPin className="size-4 shrink-0 text-gold" /> Av. das Letras, 120 · Novo Mundo
-            </li>
-            <li className="flex items-center gap-2">
-              <Phone className="size-4 shrink-0 text-gold" /> (41) 3333-1200
-            </li>
-            <li className="flex items-center gap-2">
-              <Mail className="size-4 shrink-0 text-gold" /> biblioteca@cocnovomundo.edu.br
+              <MapPin className="size-4 shrink-0 text-gold" /> Av. Mal. Mallet, 392 - Canto do Forte, Praia Grande - SP
             </li>
           </ul>
         </div>
@@ -59,15 +47,14 @@ export function SiteFooter() {
         <div>
           <h3 className="font-display text-base text-gold-soft">Redes sociais</h3>
           <div className="mt-4 flex gap-3">
-            {[Instagram, Facebook, Youtube].map((Icon, i) => (
-              <a
-                key={i}
-                href="#"
-                className="grid size-10 place-items-center rounded-full border border-primary-foreground/20 transition-colors hover:border-gold hover:text-gold"
-              >
-                <Icon className="size-5" />
-              </a>
-            ))}
+            <a
+              href="https://www.instagram.com/cocnovomundo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="grid size-10 place-items-center rounded-full border border-primary-foreground/20 transition-colors hover:border-gold hover:text-gold"
+            >
+              <Instagram className="size-5" />
+            </a>
           </div>
           <p className="mt-5 text-xs text-primary-foreground/55">
             Siga para conhecer as novidades do acervo e os clubes de leitura.

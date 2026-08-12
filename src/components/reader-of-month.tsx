@@ -29,7 +29,9 @@ export function ReaderOfMonth() {
             da escola, incentivando mais estudantes a mergulharem na leitura.
           </p>
           <a
-            href="#"
+            href="https://www.instagram.com/cocnovomundo/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition-transform hover:scale-[1.03]"
           >
             <Instagram className="size-4" /> Ver no perfil da escola
