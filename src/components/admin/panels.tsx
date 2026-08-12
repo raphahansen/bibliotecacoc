@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { CoverField } from "@/components/admin/cover-field";
+import { CoverImage } from "@/components/cover-image";
+import { uploadBookCover, removeBookCover } from "@/lib/covers";
 import {
   deleteReview,
   levelOptions,
