@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AcervoRouteImport } from './routes/acervo'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as CategoriaSlugRouteImport } from './routes/categoria.$slug'
@@ -42,6 +43,11 @@ const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
   path: '/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/acervo': typeof AcervoRoute
   '/auth': typeof AuthRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/categoria/$slug': typeof CategoriaSlugRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/acervo'
     | '/auth'
     | '/redefinir-senha'
+    | '/sitemap.xml'
     | '/admin'
     | '/perfil'
     | '/categoria/$slug'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/acervo'
     | '/auth'
     | '/redefinir-senha'
+    | '/sitemap.xml'
     | '/admin'
     | '/perfil'
     | '/categoria/$slug'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/acervo'
     | '/auth'
     | '/redefinir-senha'
+    | '/sitemap.xml'
     | '/_authenticated/admin'
     | '/_authenticated/perfil'
     | '/categoria/$slug'
@@ -124,6 +136,7 @@ export interface RootRouteChildren {
   AcervoRoute: typeof AcervoRoute
   AuthRoute: typeof AuthRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaSlugRoute: typeof CategoriaSlugRoute
 }
 
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/redefinir-senha'
       fullPath: '/redefinir-senha'
       preLoaderRoute: typeof RedefinirSenhaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -207,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcervoRoute: AcervoRoute,
   AuthRoute: AuthRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaSlugRoute: CategoriaSlugRoute,
 }
 export const routeTree = rootRouteImport

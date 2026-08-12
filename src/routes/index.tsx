@@ -21,11 +21,42 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: title },
       { property: "og:description", content: description },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://bibliotecanovomundo.lovable.app/" },
       { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "https://bibliotecanovomundo.lovable.app/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Library",
+          name: "Biblioteca COC Novomundo",
+          alternateName: "Biblioteca Profª Vera Massis",
+          url: "https://bibliotecanovomundo.lovable.app/",
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "Av. Mal. Mallet, 392 - Canto do Forte",
+            addressLocality: "Praia Grande",
+            addressRegion: "SP",
+            addressCountry: "BR",
+          },
+          openingHoursSpecification: [
+            {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+              opens: "09:30",
+              closes: "10:50",
+            },
+          ],
+          sameAs: ["https://www.instagram.com/cocnovomundo/"],
+        }),
+      },
     ],
   }),
   component: Index,
 });
+
 
 function Index() {
   const homeQuery = useQuery({

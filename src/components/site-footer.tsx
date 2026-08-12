@@ -51,10 +51,13 @@ export function SiteFooter() {
               href="https://www.instagram.com/cocnovomundo/"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Instagram do Colégio Novomundo COC"
+              title="Instagram do Colégio Novomundo COC"
               className="grid size-10 place-items-center rounded-full border border-primary-foreground/20 transition-colors hover:border-gold hover:text-gold"
             >
-              <Instagram className="size-5" />
+              <Instagram className="size-5" aria-hidden="true" />
             </a>
+
           </div>
           <p className="mt-5 text-xs text-primary-foreground/55">
             Siga para conhecer as novidades do acervo e os clubes de leitura.
