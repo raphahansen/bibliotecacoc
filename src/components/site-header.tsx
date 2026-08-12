@@ -38,7 +38,7 @@ export function SiteHeader() {
           <img
             src={logo.url}
             alt="Colégio Novomundo · Plataforma de Educação COC"
-            className="h-11 w-auto shrink-0 sm:h-12"
+            className="h-12 w-auto shrink-0 sm:h-14"
           />
           <span className="hidden min-w-0 border-l border-border pl-3 leading-tight sm:block">
             <span className="block truncate font-display text-base font-semibold text-primary">
