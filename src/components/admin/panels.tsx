@@ -36,6 +36,8 @@ import {
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
 import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+import { buildCsv, downloadCsvFile, fetchAllPages, timestampedName } from "@/lib/csv-export";
+
 
 import { BooksImport, UsersImport } from "@/components/admin/csv-imports";
 import { BookCopiesManager, useCopyCounts } from "@/components/admin/copies-panel";
