@@ -2,7 +2,7 @@
 
 function escapeCell(value: unknown): string {
   const text = value === null || value === undefined ? "" : String(value);
-  return /[",;\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return /[",;\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 /** Usa ";" como separador (padrão do Excel em pt-BR) e declara sep=; no topo. */

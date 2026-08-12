@@ -57,19 +57,50 @@ export async function readCsvFile(file: File): Promise<string> {
   return fixMojibake(text);
 }
 
-/** Reinterpreta sequências UTF-8 lidas como Latin-1 (Ã©, Ã³, Â…). */
+/**
+ * Reinterpreta sequências UTF-8 lidas como Latin-1/Windows-1252 (Ã©, Ã³, Â…).
+ * A correção é feita trecho a trecho, então textos mistos (parte correta,
+ * parte quebrada) também são recuperados.
+ */
+const WIN1252_EXTRA: Record<string, number> = {
+  "\u20AC": 0x80, "\u201A": 0x82, "\u0192": 0x83, "\u201E": 0x84, "\u2026": 0x85,
+  "\u2020": 0x86, "\u2021": 0x87, "\u02C6": 0x88, "\u2030": 0x89, "\u0160": 0x8a,
+  "\u2039": 0x8b, "\u0152": 0x8c, "\u017D": 0x8e, "\u2018": 0x91, "\u2019": 0x92,
+  "\u201C": 0x93, "\u201D": 0x94, "\u2022": 0x95, "\u2013": 0x96, "\u2014": 0x97,
+  "\u02DC": 0x98, "\u2122": 0x99, "\u0161": 0x9a, "\u203A": 0x9b, "\u0153": 0x9c,
+  "\u017E": 0x9e, "\u0178": 0x9f,
+};
+
+const MOJIBAKE_RE =
+  /[\u00C2-\u00F4](?:[\u0080-\u00BF\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178]){1,3}/g;
+
+function toByte(ch: string): number | null {
+  const code = ch.charCodeAt(0);
+  if (code <= 0xff) return code;
+  return WIN1252_EXTRA[ch] ?? null;
+}
+
 export function fixMojibake(text: string): string {
-  if (!/[ÃÂ][\u0080-\u00BF]/.test(text)) return text;
-  const codes = [...text].map((c) => c.charCodeAt(0));
-  if (codes.some((c) => c > 255)) return text;
-  try {
-    const bytes = Uint8Array.from(codes);
-    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-    return decoded;
-  } catch {
+  if (!MOJIBAKE_RE.test(text)) {
+    MOJIBAKE_RE.lastIndex = 0;
     return text;
   }
+  MOJIBAKE_RE.lastIndex = 0;
+  return text.replace(MOJIBAKE_RE, (match) => {
+    const bytes: number[] = [];
+    for (const ch of match) {
+      const byte = toByte(ch);
+      if (byte === null) return match;
+      bytes.push(byte);
+    }
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes));
+    } catch {
+      return match;
+    }
+  });
 }
+
 
 export function downloadCsv(filename: string, content: string) {
   const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
