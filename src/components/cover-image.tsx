@@ -7,10 +7,10 @@ export function CoverImage({
   className = "",
   fallback,
 }: {
-  path?: string | null;
+  path?: string | null | undefined;
   alt: string;
-  className?: string;
-  fallback?: React.ReactNode;
+  className?: string | undefined;
+  fallback?: React.ReactNode | undefined;
 }) {
   const urls = useCoverUrls([path]);
   const url = path ? urls.data?.[coverKey(path)] : undefined;

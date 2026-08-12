@@ -14,7 +14,7 @@ export function CoverField({
   onUpload,
   onRemove,
 }: {
-  path?: string | null;
+  path?: string | null | undefined;
   label: string;
   onUpload: (file: File) => Promise<unknown>;
   onRemove: () => Promise<unknown>;
