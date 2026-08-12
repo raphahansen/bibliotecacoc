@@ -184,10 +184,10 @@ function ProfilePage() {
         <header className="rounded-3xl border border-border bg-[image:var(--gradient-hero)] p-6 shadow-[var(--shadow-card)] sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-xs uppercase tracking-[0.2em] text-primary-foreground/80">
                 Minha conta
               </p>
-              <h1 className="mt-1 font-display text-3xl font-semibold text-foreground">
+              <h1 className="mt-1 font-display text-3xl font-semibold text-primary-foreground">
                 {profile?.full_name || "Leitor(a)"}
               </h1>
             </div>

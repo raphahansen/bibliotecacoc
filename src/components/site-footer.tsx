@@ -10,7 +10,7 @@ export function SiteFooter() {
             <img
               src={logo.url}
               alt="Colégio Novomundo · Plataforma de Educação COC"
-              className="h-12 w-auto"
+              className="h-14 w-auto"
             />
           </div>
           <div className="mt-4 leading-tight">
