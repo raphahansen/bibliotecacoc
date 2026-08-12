@@ -10,6 +10,7 @@ import {
   downloadCsv,
   normalizeRole,
   parseCsv,
+  readCsvFile,
   stripHeader,
 } from "@/lib/csv";
 import type { AppRole } from "@/lib/library";
@@ -56,7 +57,7 @@ export function BooksImport({ onDone }: { onDone: () => void }) {
 
   const handleFile = async (file: File) => {
     setFileName(file.name);
-    const text = await file.text();
+    const text = await readCsvFile(file);
     const parsed = stripHeader(parseCsv(text), "titulo");
     const lines: BookLine[] = parsed.map((cells, i) => {
       const [title = "", author = "", publisher = "", level = "", collection = "", synopsis = "", quantity = "0"] =
@@ -231,7 +232,7 @@ export function UsersImport({ allowedRoles }: { allowedRoles: AppRole[] }) {
   const handleFile = async (file: File) => {
     setFileName(file.name);
     setReport(null);
-    const text = await file.text();
+    const text = await readCsvFile(file);
     const parsed = stripHeader(parseCsv(text), "nome");
     const lines: UserLine[] = parsed.map((cells, i) => {
       const [full_name = "", email = "", password = "", matricula = "", grade = "", role = "aluno"] = cells;
