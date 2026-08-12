@@ -41,6 +41,34 @@ export function stripHeader(rows: string[][], firstHeaderCell: string): string[]
   return rows;
 }
 
+/**
+ * Lê o arquivo respeitando a codificação: tenta UTF-8 estrito e, se o arquivo
+ * tiver sido salvo pelo Excel em ANSI, decodifica como Windows-1252.
+ * Também corrige textos já "mojibake" (ex.: HistÃ³ria → História).
+ */
+export async function readCsvFile(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    text = new TextDecoder("windows-1252").decode(buffer);
+  }
+  return fixMojibake(text);
+}
+
+/** Reinterpreta sequências UTF-8 lidas como Latin-1 (Ã©, Ã³, Â…). */
+export function fixMojibake(text: string): string {
+  if (!/[ÃÂ][\u0080-\u00BF]/.test(text)) return text;
+  try {
+    const bytes = Uint8Array.from([...text].map((c) => c.charCodeAt(0) & 0xff));
+    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return decoded;
+  } catch {
+    return text;
+  }
+}
+
 export function downloadCsv(filename: string, content: string) {
   const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
