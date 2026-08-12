@@ -80,14 +80,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Biblioteca COC Novomundo · Profª Vera Massis" },
+      {
+        name: "description",
+        content:
+          "Acervo da Biblioteca COC Novomundo: busque livros por categoria e classificação indicativa, leia avaliações e reserve seus títulos favoritos.",
+      },
+      { name: "author", content: "Biblioteca COC Novomundo" },
+      { property: "og:site_name", content: "Biblioteca COC Novomundo" },
+      { property: "og:title", content: "Biblioteca COC Novomundo · Profª Vera Massis" },
+      {
+        property: "og:description",
+        content:
+          "Acervo da Biblioteca COC Novomundo: busque livros por categoria e classificação indicativa, leia avaliações e reserve seus títulos favoritos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -106,8 +114,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
-
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "@id": "https://bibliotecanovomundo.lovable.app/#organization",
+              name: "Biblioteca COC Novomundo",
+              url: "https://bibliotecanovomundo.lovable.app",
+              sameAs: ["https://www.instagram.com/cocnovomundo/"],
+            },
+            {
+              "@type": "WebSite",
+              "@id": "https://bibliotecanovomundo.lovable.app/#website",
+              name: "Biblioteca COC Novomundo",
+              url: "https://bibliotecanovomundo.lovable.app",
+              inLanguage: "pt-BR",
+              publisher: { "@id": "https://bibliotecanovomundo.lovable.app/#organization" },
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
