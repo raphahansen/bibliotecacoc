@@ -31,7 +31,7 @@ export function parseCsv(text: string): string[][] {
   }
   row.push(field.trim());
   if (row.some((c) => c.length > 0)) rows.push(row);
-  return rows;
+  return rows.filter((r) => !/^sep=/i.test(r[0] ?? ""));
 }
 
 /** Remove a linha de cabeçalho quando ela corresponde ao modelo esperado. */
@@ -52,15 +52,17 @@ export function downloadCsv(filename: string, content: string) {
 }
 
 export const USERS_CSV_TEMPLATE = [
-  "nome,email,senha,RM,Série,permissão",
-  "Maria Silva,maria@escola.com,Senha123,20250001,8º Ano B,Aluno",
-  "João Souza,joao@escola.com,Senha456,20250002,9º Ano A,Aluno",
-].join("\n");
+  "sep=;",
+  "nome;email;senha;RM;Série;permissão",
+  "Maria Silva;maria@escola.com;Senha123;20250001;8º Ano B;Aluno",
+  "João Souza;joao@escola.com;Senha456;20250002;9º Ano A;Aluno",
+].join("\r\n");
 
 export const BOOKS_CSV_TEMPLATE = [
-  "titulo,autor,editora,nivel,colecao,sinopse,quantidade_inicial",
-  'O Pequeno Príncipe,Antoine de Saint-Exupéry,Agir,LIVRE,false,"Uma história sobre amizade",5',
-].join("\n");
+  "sep=;",
+  "titulo;autor;editora;nivel;colecao;sinopse;quantidade_inicial",
+  "O Pequeno Príncipe;Antoine de Saint-Exupéry;Agir;LIVRE;false;Uma história sobre amizade;5",
+].join("\r\n");
 
 export function normalizeRole(value: string): "aluno" | "professor" | "bibliotecario" | "admin" | null {
   const v = value
