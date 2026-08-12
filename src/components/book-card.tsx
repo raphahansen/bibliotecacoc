@@ -1,4 +1,5 @@
 import { Star } from "lucide-react";
+import { CoverImage } from "@/components/cover-image";
 import { bookTone, type DbBook, type RatingStat } from "@/lib/library";
 
 export function BookCard({
