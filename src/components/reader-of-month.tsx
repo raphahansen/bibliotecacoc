@@ -1,18 +1,21 @@
-import { Award, Star, BookOpen, Instagram, Loader2 } from "lucide-react";
+import { Award, Star, BookOpen, Instagram, Loader2, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchReaderOfMonth } from "@/lib/library";
+import { fetchReaderRanking } from "@/lib/library";
 
 export function ReaderOfMonth() {
   const readerQuery = useQuery({
-    queryKey: ["reader-of-month"],
-    queryFn: fetchReaderOfMonth,
+    queryKey: ["reader-ranking"],
+    queryFn: () => fetchReaderRanking(10),
   });
 
-  const reader = readerQuery.data;
+  const ranking = readerQuery.data ?? [];
+  const reader = ranking[0];
+  const others = ranking.slice(1);
   const month = new Date().toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+
 
   return (
     <section id="leitor-do-mes" className="bg-secondary/60 py-16">
