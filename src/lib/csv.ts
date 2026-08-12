@@ -36,7 +36,10 @@ export function parseCsv(text: string): string[][] {
 
 /** Remove a linha de cabeçalho quando ela corresponde ao modelo esperado. */
 export function stripHeader(rows: string[][], firstHeaderCell: string): string[][] {
-  const first = rows[0]?.[0]?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const first = rows[0]?.[0]
+    ?.toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
   if (first && first === firstHeaderCell) return rows.slice(1);
   return rows;
 }
@@ -63,12 +66,33 @@ export async function readCsvFile(file: File): Promise<string> {
  * parte quebrada) também são recuperados.
  */
 const WIN1252_EXTRA: Record<string, number> = {
-  "\u20AC": 0x80, "\u201A": 0x82, "\u0192": 0x83, "\u201E": 0x84, "\u2026": 0x85,
-  "\u2020": 0x86, "\u2021": 0x87, "\u02C6": 0x88, "\u2030": 0x89, "\u0160": 0x8a,
-  "\u2039": 0x8b, "\u0152": 0x8c, "\u017D": 0x8e, "\u2018": 0x91, "\u2019": 0x92,
-  "\u201C": 0x93, "\u201D": 0x94, "\u2022": 0x95, "\u2013": 0x96, "\u2014": 0x97,
-  "\u02DC": 0x98, "\u2122": 0x99, "\u0161": 0x9a, "\u203A": 0x9b, "\u0153": 0x9c,
-  "\u017E": 0x9e, "\u0178": 0x9f,
+  "\u20AC": 0x80,
+  "\u201A": 0x82,
+  "\u0192": 0x83,
+  "\u201E": 0x84,
+  "\u2026": 0x85,
+  "\u2020": 0x86,
+  "\u2021": 0x87,
+  "\u02C6": 0x88,
+  "\u2030": 0x89,
+  "\u0160": 0x8a,
+  "\u2039": 0x8b,
+  "\u0152": 0x8c,
+  "\u017D": 0x8e,
+  "\u2018": 0x91,
+  "\u2019": 0x92,
+  "\u201C": 0x93,
+  "\u201D": 0x94,
+  "\u2022": 0x95,
+  "\u2013": 0x96,
+  "\u2014": 0x97,
+  "\u02DC": 0x98,
+  "\u2122": 0x99,
+  "\u0161": 0x9a,
+  "\u203A": 0x9b,
+  "\u0153": 0x9c,
+  "\u017E": 0x9e,
+  "\u0178": 0x9f,
 };
 
 const MOJIBAKE_RE =
@@ -101,9 +125,25 @@ export function fixMojibake(text: string): string {
   });
 }
 
+/**
+ * Repete a correção para recuperar também textos que foram corrompidos mais
+ * de uma vez antes de chegarem ao sistema (ex.: HistÃƒÂ³ria → História).
+ */
+export function normalizeCsvText(value: unknown): string {
+  let normalized = value === null || value === undefined ? "" : String(value);
+  for (let pass = 0; pass < 3; pass += 1) {
+    const repaired = fixMojibake(normalized);
+    if (repaired === normalized) break;
+    normalized = repaired;
+  }
+  return normalized;
+}
 
 export function downloadCsv(filename: string, content: string) {
-  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
+  const bytes = new TextEncoder().encode(content);
+  const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), bytes], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -125,7 +165,9 @@ export const BOOKS_CSV_TEMPLATE = [
   "O Pequeno Príncipe;Antoine de Saint-Exupéry;Agir;LIVRE;false;Uma história sobre amizade;5",
 ].join("\r\n");
 
-export function normalizeRole(value: string): "aluno" | "professor" | "bibliotecario" | "admin" | null {
+export function normalizeRole(
+  value: string,
+): "aluno" | "professor" | "bibliotecario" | "admin" | null {
   const v = value
     .trim()
     .toLowerCase()

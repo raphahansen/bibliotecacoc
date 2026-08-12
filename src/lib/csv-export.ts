@@ -1,7 +1,9 @@
 /** Geração e download de arquivos CSV do painel administrativo. */
 
+import { normalizeCsvText } from "@/lib/csv";
+
 function escapeCell(value: unknown): string {
-  const text = value === null || value === undefined ? "" : String(value);
+  const text = normalizeCsvText(value);
   return /[",;\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -12,7 +14,10 @@ export function buildCsv(headers: string[], rows: unknown[][]): string {
 }
 
 export function downloadCsvFile(filename: string, content: string) {
-  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
+  const bytes = new TextEncoder().encode(content);
+  const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), bytes], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
