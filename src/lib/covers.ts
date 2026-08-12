@@ -133,7 +133,7 @@ export async function readFilesFromInput(files: File[]): Promise<BulkFile[]> {
       const entries = unzipSync(buffer);
       for (const [name, bytes] of Object.entries(entries)) {
         if (!IMAGE_EXT.test(name) || name.startsWith("__MACOSX")) continue;
-        out.push({ name, blob: new Blob([bytes as Uint8Array]) });
+        out.push({ name, blob: new Blob([(bytes as Uint8Array).slice().buffer]) });
       }
     } else if (IMAGE_EXT.test(file.name)) {
       out.push({ name: file.name, blob: file });
