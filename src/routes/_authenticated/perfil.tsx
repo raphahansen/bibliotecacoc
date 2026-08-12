@@ -180,7 +180,7 @@ function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-4 pb-20 pt-28 lg:px-8">
+      <main className="mx-auto max-w-5xl px-4 pb-20 pt-36 lg:px-8">
         <header className="rounded-3xl border border-border bg-[image:var(--gradient-hero)] p-6 shadow-[var(--shadow-card)] sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
