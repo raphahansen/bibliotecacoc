@@ -14,6 +14,8 @@ import {
   UsersAdmin,
 } from "@/components/admin/panels";
 import { CopiesAdmin } from "@/components/admin/copies-panel";
+import { AuditAdmin } from "@/components/admin/audit-panel";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -43,6 +45,8 @@ const tabs = [
   "Avaliações",
   "Usuários",
   "Categorias",
+  "Histórico",
+
 ] as const;
 
 function AdminPage() {
@@ -114,6 +118,8 @@ function AdminPage() {
           {tab === "Avaliações" && <ReviewsAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
           {tab === "Categorias" && <CategoriesAdmin />}
+          {tab === "Histórico" && <AuditAdmin />}
+
         </div>
       </main>
       <SiteFooter />

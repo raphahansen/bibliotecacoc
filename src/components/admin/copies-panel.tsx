@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, Barcode, Ban } from "lucide-react";
+import { Loader2, Search, Plus, Check, X, Barcode, Ban, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
 import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+import { buildCsv, downloadCsvFile, fetchAllPages, timestampedName } from "@/lib/csv-export";
+
 
 
 const COPIES_PAGE_SIZE = 20;
@@ -440,42 +442,63 @@ export function CopiesAdmin() {
     setPage(0);
   }, [q, status]);
 
+  const fetchCopiesPage = async (from: number, to: number) => {
+    const term = q.trim().replace(/[,%()]/g, " ");
+    let bookIds: string[] = [];
+    if (term) {
+      const { data: books } = await supabase
+        .from("books")
+        .select("id")
+        .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
+        .limit(2000);
+      bookIds = (books ?? []).map((b) => b.id);
+    }
+
+    let query = supabase.from("book_copies").select(copySelect, { count: "exact" });
+
+    if (status) query = query.eq("status", status);
+    if (term) {
+      const filters = [`asset_code.ilike.%${term}%`];
+      if (bookIds.length) filters.push(`book_id.in.(${bookIds.join(",")})`);
+      query = query.or(filters.join(","));
+    }
+
+    if (sort === "recent") query = query.order("created_at", { ascending: false }).order("id");
+    else if (sort === "status") query = query.order("status").order("asset_code");
+    else query = query.order("asset_code");
+
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+    return { total: count ?? 0, rows: (data ?? []) as unknown as CopyRow[] };
+  };
+
   const copies = useQuery({
     queryKey: ["admin-copies", q, status, sort, page],
-    queryFn: async () => {
-      const term = q.trim().replace(/[,%()]/g, " ");
-      let bookIds: string[] = [];
-      if (term) {
-        const { data: books } = await supabase
-          .from("books")
-          .select("id")
-          .or(`title.ilike.%${term}%,author.ilike.%${term}%`)
-          .limit(2000);
-        bookIds = (books ?? []).map((b) => b.id);
-      }
-
-      let query = supabase.from("book_copies").select(copySelect, { count: "exact" });
-
-      if (status) query = query.eq("status", status);
-      if (term) {
-        const filters = [`asset_code.ilike.%${term}%`];
-        if (bookIds.length) filters.push(`book_id.in.(${bookIds.join(",")})`);
-        query = query.or(filters.join(","));
-      }
-
-      if (sort === "recent") query = query.order("created_at", { ascending: false });
-      else if (sort === "status") query = query.order("status").order("asset_code");
-      else query = query.order("asset_code");
-
-      const { data, error, count } = await query.range(
-        page * COPIES_PAGE_SIZE,
-        page * COPIES_PAGE_SIZE + COPIES_PAGE_SIZE - 1,
-      );
-      if (error) throw error;
-      return { total: count ?? 0, rows: (data ?? []) as unknown as CopyRow[] };
-    },
+    queryFn: () =>
+      fetchCopiesPage(page * COPIES_PAGE_SIZE, page * COPIES_PAGE_SIZE + COPIES_PAGE_SIZE - 1),
   });
 
+  const exportCopies = useMutation({
+    mutationFn: async () => {
+      const rows = await fetchAllPages(fetchCopiesPage);
+      const csv = buildCsv(
+        ["codigo_bib", "livro", "autor", "situacao", "condicao", "localizacao", "observacoes"],
+        rows.map((c) => [
+          c.asset_code,
+          c.books?.title ?? "",
+          c.books?.author ?? "",
+          copyStatusLabels[c.status] ?? c.status,
+          copyConditionLabels[c.condition] ?? c.condition,
+          c.location,
+          c.notes,
+        ]),
+      );
+      downloadCsvFile(timestampedName("exemplares"), csv);
+      return rows.length;
+    },
+    onSuccess: (n) => toast.success(`${n} exemplar(es) exportado(s).`),
+    onError: () => toast.error("Não foi possível exportar o inventário."),
+  });
 
   return (
     <Card title="Inventário de exemplares">
@@ -505,6 +528,19 @@ export function CopiesAdmin() {
         <button className={primaryBtn} onClick={() => setCreating((v) => !v)}>
           <Plus className="size-4" /> Novo exemplar
         </button>
+        <button
+          className={primaryBtn}
+          disabled={exportCopies.isPending}
+          onClick={() => exportCopies.mutate()}
+        >
+          {exportCopies.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Exportar CSV
+        </button>
+
       </div>
 
       {creating && (

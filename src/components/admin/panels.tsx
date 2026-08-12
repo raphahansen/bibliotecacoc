@@ -13,6 +13,8 @@ import {
   KeyRound,
   Pencil,
   Upload,
+  Download,
+
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +38,8 @@ import {
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
 import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+import { buildCsv, downloadCsvFile, fetchAllPages, timestampedName } from "@/lib/csv-export";
+
 
 import { BooksImport, UsersImport } from "@/components/admin/csv-imports";
 import { BookCopiesManager, useCopyCounts } from "@/components/admin/copies-panel";
@@ -109,37 +113,69 @@ export function BooksAdmin() {
     },
   });
 
+  const fetchBooksPage = async (from: number, to: number) => {
+    let query = supabase
+      .from("books")
+      .select(
+        "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis, categories(name)",
+        { count: "exact" },
+      );
+    const term = q.trim().replace(/[,%()]/g, " ");
+    if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
+    if (categoryFilter === "none") query = query.is("category_id", null);
+    else if (categoryFilter) query = query.eq("category_id", categoryFilter);
+    if (levelFilter) query = query.eq("level", levelFilter);
+    if (statusFilter) query = query.eq("active", statusFilter === "active");
+
+    if (sort === "author") query = query.order("author").order("id");
+    else if (sort === "recent") query = query.order("created_at", { ascending: false }).order("id");
+    else query = query.order("title").order("id");
+
+    const { data, error, count } = await query.range(from, to);
+    if (error) throw error;
+    return {
+      total: count ?? 0,
+      rows: (data ?? []) as unknown as (BookRow & { categories: { name: string } | null })[],
+    };
+  };
+
   const books = useQuery({
     queryKey: ["admin-books", q, categoryFilter, levelFilter, statusFilter, sort, page],
-    queryFn: async () => {
-      let query = supabase
-        .from("books")
-        .select(
-          "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis, categories(name)",
-          { count: "exact" },
-        );
-      const term = q.trim().replace(/[,%()]/g, " ");
-      if (term) query = query.or(`title.ilike.%${term}%,author.ilike.%${term}%`);
-      if (categoryFilter === "none") query = query.is("category_id", null);
-      else if (categoryFilter) query = query.eq("category_id", categoryFilter);
-      if (levelFilter) query = query.eq("level", levelFilter);
-      if (statusFilter) query = query.eq("active", statusFilter === "active");
-
-      if (sort === "author") query = query.order("author");
-      else if (sort === "recent") query = query.order("created_at", { ascending: false });
-      else query = query.order("title");
-
-      const { data, error, count } = await query.range(
-        page * PAGE_SIZE,
-        page * PAGE_SIZE + PAGE_SIZE - 1,
-      );
-      if (error) throw error;
-      return {
-        total: count ?? 0,
-        rows: (data ?? []) as unknown as (BookRow & { categories: { name: string } | null })[],
-      };
-    },
+    queryFn: () => fetchBooksPage(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1),
   });
+
+  const exportBooks = useMutation({
+    mutationFn: async () => {
+      const rows = await fetchAllPages(fetchBooksPage);
+      const csv = buildCsv(
+        [
+          "titulo",
+          "autor",
+          "editora",
+          "classificacao",
+          "categoria",
+          "situacao",
+          "total_exemplares",
+          "exemplares_disponiveis",
+        ],
+        rows.map((b) => [
+          b.title,
+          b.author,
+          b.publisher,
+          levelOptions.find((l) => l.value === b.level)?.label ?? b.level,
+          b.categories?.name ?? "Sem categoria",
+          b.active ? "Ativo" : "Inativo",
+          b.total_copies,
+          b.available_copies,
+        ]),
+      );
+      downloadCsvFile(timestampedName("livros"), csv);
+      return rows.length;
+    },
+    onSuccess: (n) => toast.success(`${n} livro(s) exportado(s).`),
+    onError: () => toast.error("Não foi possível exportar os livros."),
+  });
+
 
   const update = useMutation({
     mutationFn: async ({
@@ -262,6 +298,19 @@ export function BooksAdmin() {
         <button onClick={() => setImporting((v) => !v)} className={primaryBtn}>
           <Upload className="size-4" /> Importar livros (CSV)
         </button>
+        <button
+          onClick={() => exportBooks.mutate()}
+          disabled={exportBooks.isPending}
+          className={primaryBtn}
+        >
+          {exportBooks.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Exportar CSV
+        </button>
+
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
