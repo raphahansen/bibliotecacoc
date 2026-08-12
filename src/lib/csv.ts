@@ -31,7 +31,7 @@ export function parseCsv(text: string): string[][] {
   }
   row.push(field.trim());
   if (row.some((c) => c.length > 0)) rows.push(row);
-  return rows;
+  return rows.filter((r) => !/^sep=/i.test(r[0] ?? ""));
 }
 
 /** Remove a linha de cabeçalho quando ela corresponde ao modelo esperado. */
