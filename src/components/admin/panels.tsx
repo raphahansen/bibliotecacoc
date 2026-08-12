@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { CoverField } from "@/components/admin/cover-field";
+import { CoverImage } from "@/components/cover-image";
+import { uploadBookCover, removeBookCover } from "@/lib/covers";
 import {
   deleteReview,
   levelOptions,
@@ -73,6 +76,7 @@ type BookRow = {
   active: boolean;
   category_id: string | null;
   synopsis: string;
+  cover_url: string | null;
 };
 
 export function BooksAdmin() {
@@ -117,7 +121,7 @@ export function BooksAdmin() {
     let query = supabase
       .from("books")
       .select(
-        "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis, categories(name)",
+        "id, title, author, publisher, level, total_copies, available_copies, active, category_id, synopsis, cover_url, categories(name)",
         { count: "exact" },
       );
     const term = q.trim().replace(/[,%()]/g, " ");
@@ -480,6 +484,21 @@ export function BooksAdmin() {
                 <p className="self-center text-xs text-muted-foreground">
                   A quantidade de exemplares é definida em “Gerenciar exemplares”.
                 </p>
+                <div className="sm:col-span-2">
+                  <CoverField
+                    path={b.cover_url}
+                    label="Capa do livro"
+                    onUpload={async (file) => {
+                      await uploadBookCover(b.id, file);
+                      await qc.invalidateQueries({ queryKey: ["admin-books"] });
+                      await qc.invalidateQueries({ queryKey: ["cover-urls"] });
+                    }}
+                    onRemove={async () => {
+                      await removeBookCover(b.id);
+                      await qc.invalidateQueries({ queryKey: ["admin-books"] });
+                    }}
+                  />
+                </div>
                 <textarea
                   className={`${input} sm:col-span-2`}
                   rows={3}
@@ -506,6 +525,12 @@ export function BooksAdmin() {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {b.cover_url && (
+                      <div className="hidden h-16 w-11 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary sm:block">
+                        <CoverImage path={b.cover_url} alt={`Capa de ${b.title}`} />
+                      </div>
+                    )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">
                       {b.title}
@@ -524,6 +549,7 @@ export function BooksAdmin() {
                       {(counts.data?.[b.id]?.["emprestado"] ?? 0)} emprestados ·{" "}
                       {(counts.data?.[b.id]?.["manutencao"] ?? 0)} manutenção
                     </p>
+                  </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button

@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/panels";
 import { CopiesAdmin } from "@/components/admin/copies-panel";
 import { AuditAdmin } from "@/components/admin/audit-panel";
+import { CoversAdmin } from "@/components/admin/covers-bulk";
 
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -40,6 +41,7 @@ const tabs = [
   "Visão geral",
   "Livros",
   "Inventário de exemplares",
+  "Capas e fotos",
   "Reservas",
   "Empréstimos",
   "Avaliações",
@@ -113,6 +115,7 @@ function AdminPage() {
           {tab === "Visão geral" && <DashboardAdmin />}
           {tab === "Livros" && <BooksAdmin />}
           {tab === "Inventário de exemplares" && <CopiesAdmin />}
+          {tab === "Capas e fotos" && <CoversAdmin />}
           {tab === "Reservas" && <ReservationsAdmin />}
           {tab === "Empréstimos" && <LoansAdmin />}
           {tab === "Avaliações" && <ReviewsAdmin />}

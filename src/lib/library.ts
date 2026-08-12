@@ -49,6 +49,7 @@ export type DbBook = {
   active: boolean;
   category_id: string | null;
   created_at: string;
+  cover_url: string | null;
 };
 
 export type DbCategory = {
@@ -70,7 +71,7 @@ export type DbProfile = {
 };
 
 const BOOK_FIELDS =
-  "id, legacy_id, title, author, publisher, level, collection, synopsis, total_copies, available_copies, active, category_id, created_at";
+  "id, legacy_id, title, author, publisher, level, collection, synopsis, total_copies, available_copies, active, category_id, created_at, cover_url";
 
 /** Tom de cor determinístico usado nas capas geradas por CSS. */
 const tones = [

@@ -63,6 +63,7 @@ export type Database = {
           id: string
           location: string
           notes: string
+          photo_url: string | null
           status: string
           updated_at: string
         }
@@ -75,6 +76,7 @@ export type Database = {
           id?: string
           location?: string
           notes?: string
+          photo_url?: string | null
           status?: string
           updated_at?: string
         }
@@ -87,6 +89,7 @@ export type Database = {
           id?: string
           location?: string
           notes?: string
+          photo_url?: string | null
           status?: string
           updated_at?: string
         }
@@ -107,6 +110,7 @@ export type Database = {
           available_copies: number
           category_id: string | null
           collection: boolean
+          cover_url: string | null
           created_at: string
           id: string
           legacy_id: string | null
@@ -123,6 +127,7 @@ export type Database = {
           available_copies?: number
           category_id?: string | null
           collection?: boolean
+          cover_url?: string | null
           created_at?: string
           id?: string
           legacy_id?: string | null
@@ -139,6 +144,7 @@ export type Database = {
           available_copies?: number
           category_id?: string | null
           collection?: boolean
+          cover_url?: string | null
           created_at?: string
           id?: string
           legacy_id?: string | null
@@ -482,6 +488,7 @@ export type Database = {
           id: string
           location: string
           notes: string
+          photo_url: string | null
           status: string
           updated_at: string
         }[]
