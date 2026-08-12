@@ -38,8 +38,12 @@ export function Hero() {
             <Sparkles className="size-3.5 text-gold" /> Acervo digital e físico da escola
           </span>
           <h1 className="animate-rise max-w-3xl font-display text-3xl leading-[1.1] text-primary-foreground sm:text-5xl lg:text-6xl">
-            Cada página aberta é um mundo novo esperando por você.
+            <span className="block">Biblioteca COC Novomundo</span>
+            <span className="mt-2 block text-xl text-primary-foreground/85 sm:text-2xl lg:text-3xl">
+              Cada página aberta é um mundo novo esperando por você.
+            </span>
           </h1>
+
           <p className="animate-rise max-w-xl text-sm text-primary-foreground/80 sm:text-base">
             Descubra {stats ? nf.format(stats.books) : "milhares de"} títulos organizados por categoria, leia avaliações de
             outros estudantes e monte sua própria estante de leitura.

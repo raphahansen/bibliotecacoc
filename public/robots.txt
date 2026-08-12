@@ -12,3 +12,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://bibliotecanovomundo.lovable.app/sitemap.xml
