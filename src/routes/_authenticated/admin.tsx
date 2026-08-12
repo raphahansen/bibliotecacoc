@@ -118,6 +118,8 @@ function AdminPage() {
           {tab === "Avaliações" && <ReviewsAdmin />}
           {tab === "Usuários" && <UsersAdmin isAdmin={isAdmin} />}
           {tab === "Categorias" && <CategoriesAdmin />}
+          {tab === "Histórico" && <AuditAdmin />}
+
         </div>
       </main>
       <SiteFooter />
