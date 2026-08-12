@@ -1,18 +1,21 @@
-import { Award, Star, BookOpen, Instagram, Loader2 } from "lucide-react";
+import { Award, Star, BookOpen, Instagram, Loader2, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchReaderOfMonth } from "@/lib/library";
+import { fetchReaderRanking } from "@/lib/library";
 
 export function ReaderOfMonth() {
   const readerQuery = useQuery({
-    queryKey: ["reader-of-month"],
-    queryFn: fetchReaderOfMonth,
+    queryKey: ["reader-ranking"],
+    queryFn: () => fetchReaderRanking(10),
   });
 
-  const reader = readerQuery.data;
+  const ranking = readerQuery.data ?? [];
+  const reader = ranking[0];
+  const others = ranking.slice(1);
   const month = new Date().toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
+
 
   return (
     <section id="leitor-do-mes" className="bg-secondary/60 py-16">
@@ -65,10 +68,6 @@ export function ReaderOfMonth() {
                 ))}
               </div>
 
-              <p className="mt-4 text-sm italic text-foreground/85">
-                “Leitura é a porta de entrada para novos mundos.”
-              </p>
-
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl bg-secondary/70 p-4">
                   <p className="font-display text-2xl text-primary">
@@ -83,10 +82,44 @@ export function ReaderOfMonth() {
                     <BookOpen className="size-4" /> Leitor destaque
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Parabéns pela dedicação à leitura!
+                    {reader.on_time} devolução(ões) no prazo
                   </p>
                 </div>
               </div>
+
+              {others.length > 0 && (
+                <div className="mt-6 border-t border-border pt-5">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Trophy className="size-4" /> Ranking de leitores
+                  </p>
+                  <ul className="mt-3 grid gap-2">
+                    {others.map((r) => (
+                      <li
+                        key={r.user_id}
+                        className="flex items-center gap-3 rounded-xl bg-secondary/50 px-3 py-2"
+                      >
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                          {r.position}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm text-foreground/90">
+                          {r.full_name}
+                          {r.grade ? (
+                            <span className="text-muted-foreground"> · {r.grade}</span>
+                          ) : null}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {r.books_read} livro{r.books_read === 1 ? "" : "s"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Empates são decididos por devoluções no prazo e, persistindo, por
+                    quem começou a ler primeiro no mês.
+                  </p>
+                </div>
+              )}
+
             </>
           ) : (
             <div className="py-6 text-center">

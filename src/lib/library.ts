@@ -439,45 +439,79 @@ export type ReaderOfMonth = {
   full_name: string;
   grade: string | null;
   books_read: number;
+  on_time: number;
   month: string;
+  position: number;
 };
 
-export async function fetchReaderOfMonth(): Promise<ReaderOfMonth | null> {
+/**
+ * Ranking de leitores do mês.
+ * Critérios: 1) mais livros lidos; 2) desempate por devoluções no prazo;
+ * 3) desempate final por quem começou a ler primeiro no mês.
+ */
+export async function fetchReaderRanking(limit = 10): Promise<ReaderOfMonth[]> {
   const start = new Date();
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
+  const month = start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
   const { data, error } = await supabase
     .from("loans")
-    .select("user_id, profiles(full_name, grade)")
+    .select("user_id, loan_date, due_date, returned_at, profiles(full_name, grade)")
     .gte("loan_date", start.toISOString())
     .in("status", ["devolvido", "ativo", "atrasado"]);
   if (error) throw error;
 
-  const counts = new Map<string, { count: number; full_name: string; grade: string | null }>();
-  for (const row of (data ?? []) as unknown as {
+  type Row = {
     user_id: string;
+    loan_date: string;
+    due_date: string;
+    returned_at: string | null;
     profiles: { full_name: string; grade: string | null } | null;
-  }[]) {
+  };
+
+  const counts = new Map<
+    string,
+    { count: number; onTime: number; first: number; full_name: string; grade: string | null }
+  >();
+
+  for (const row of (data ?? []) as unknown as Row[]) {
+    if (!row.user_id) continue;
     const current = counts.get(row.user_id) ?? {
       count: 0,
+      onTime: 0,
+      first: Number.POSITIVE_INFINITY,
       full_name: row.profiles?.full_name || "Leitor(a)",
       grade: row.profiles?.grade ?? null,
     };
     current.count += 1;
+    if (row.returned_at && new Date(row.returned_at) <= new Date(`${row.due_date}T23:59:59`)) {
+      current.onTime += 1;
+    }
+    current.first = Math.min(current.first, new Date(row.loan_date).getTime());
     counts.set(row.user_id, current);
   }
 
-  let best: ReaderOfMonth | null = null;
-  counts.forEach((value, user_id) => {
-    if (!best || value.count > best.books_read) {
-      best = {
-        user_id,
-        full_name: value.full_name,
-        grade: value.grade,
-        books_read: value.count,
-        month: start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
-      };
-    }
-  });
-  return best;
+  return [...counts.entries()]
+    .sort((a, b) => {
+      if (b[1].count !== a[1].count) return b[1].count - a[1].count;
+      if (b[1].onTime !== a[1].onTime) return b[1].onTime - a[1].onTime;
+      return a[1].first - b[1].first;
+    })
+    .slice(0, limit)
+    .map(([user_id, v], index) => ({
+      user_id,
+      full_name: v.full_name,
+      grade: v.grade,
+      books_read: v.count,
+      on_time: v.onTime,
+      month,
+      position: index + 1,
+    }));
 }
+
+export async function fetchReaderOfMonth(): Promise<ReaderOfMonth | null> {
+  const ranking = await fetchReaderRanking(1);
+  return ranking[0] ?? null;
+}
+
