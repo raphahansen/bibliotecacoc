@@ -45,6 +45,8 @@ const tabs = [
   "Avaliações",
   "Usuários",
   "Categorias",
+  "Histórico",
+
 ] as const;
 
 function AdminPage() {
