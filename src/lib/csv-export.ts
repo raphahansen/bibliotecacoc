@@ -5,8 +5,10 @@ function escapeCell(value: unknown): string {
   return /[",;\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+/** Usa ";" como separador (padrão do Excel em pt-BR) e declara sep=; no topo. */
 export function buildCsv(headers: string[], rows: unknown[][]): string {
-  return [headers, ...rows].map((r) => r.map(escapeCell).join(",")).join("\n");
+  const body = [headers, ...rows].map((r) => r.map(escapeCell).join(";")).join("\r\n");
+  return `sep=;\r\n${body}`;
 }
 
 export function downloadCsvFile(filename: string, content: string) {
