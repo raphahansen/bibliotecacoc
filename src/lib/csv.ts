@@ -60,8 +60,10 @@ export async function readCsvFile(file: File): Promise<string> {
 /** Reinterpreta sequências UTF-8 lidas como Latin-1 (Ã©, Ã³, Â…). */
 export function fixMojibake(text: string): string {
   if (!/[ÃÂ][\u0080-\u00BF]/.test(text)) return text;
+  const codes = [...text].map((c) => c.charCodeAt(0));
+  if (codes.some((c) => c > 255)) return text;
   try {
-    const bytes = Uint8Array.from([...text].map((c) => c.charCodeAt(0) & 0xff));
+    const bytes = Uint8Array.from(codes);
     const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     return decoded;
   } catch {
