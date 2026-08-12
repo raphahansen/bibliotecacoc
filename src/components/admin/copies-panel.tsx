@@ -6,6 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
 import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+import { CoverField } from "@/components/admin/cover-field";
+import { CoverImage } from "@/components/cover-image";
+import { uploadCopyPhoto, removeCopyPhoto } from "@/lib/covers";
 import { buildCsv, downloadCsvFile, fetchAllPages, timestampedName } from "@/lib/csv-export";
 
 
@@ -44,10 +47,11 @@ type CopyRow = {
   condition: string;
   location: string;
   notes: string;
-  books: { title: string; author: string } | null;
+  photo_url: string | null;
+  books: { title: string; author: string; cover_url: string | null } | null;
 };
 
-const copySelect = "id, book_id, asset_code, status, condition, location, notes, books(title, author)";
+const copySelect = "id, book_id, asset_code, status, condition, location, notes, photo_url, books(title, author, cover_url)";
 
 /* --------------------------- Formulário de criação -------------------------- */
 
@@ -297,6 +301,20 @@ function CopyRowItem({
           placeholder="Observações"
           className={`${input} md:col-span-2`}
         />
+        <div className="md:col-span-2">
+          <CoverField
+            path={copy.photo_url}
+            label="Foto deste exemplar"
+            onUpload={async (file) => {
+              await uploadCopyPhoto(copy.id, copy.asset_code, file);
+              invalidate();
+            }}
+            onRemove={async () => {
+              await removeCopyPhoto(copy.id, copy.asset_code);
+              invalidate();
+            }}
+          />
+        </div>
         <div className="flex flex-wrap gap-2 md:col-span-2">
           <button className={primaryBtn} disabled={save.isPending} onClick={() => save.mutate()}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
@@ -324,7 +342,16 @@ function CopyRowItem({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background px-4 py-3">
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-3">
+        {(copy.photo_url || copy.books?.cover_url) && (
+          <div className="hidden h-14 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-secondary sm:block">
+            <CoverImage
+              path={copy.photo_url ?? copy.books?.cover_url}
+              alt={`Foto de ${copy.asset_code}`}
+            />
+          </div>
+        )}
+        <div className="min-w-0">
         <p className="flex items-center gap-2 font-mono text-sm font-semibold text-primary">
           <Barcode className="size-4" /> {copy.asset_code}
         </p>
@@ -334,6 +361,7 @@ function CopyRowItem({
           {copyConditionLabels[copy.condition] ?? copy.condition} · {copy.location}
           {copy.notes ? ` · ${copy.notes}` : ""}
         </p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-primary">
