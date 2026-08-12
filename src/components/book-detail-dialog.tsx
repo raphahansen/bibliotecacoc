@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { BookOpen, Library, Loader2, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { CoverImage } from "@/components/cover-image";
 import { useAuth } from "@/hooks/use-auth";
 import {
   createReservation,
@@ -127,9 +128,16 @@ export function BookDetailDialog({
         className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-lift)]"
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="flex min-w-0 gap-4">
+            {book.cover_url && (
+              <div className="hidden h-40 w-28 shrink-0 overflow-hidden rounded-2xl border border-border bg-secondary sm:block">
+                <CoverImage path={book.cover_url} alt={`Capa de ${book.title}`} />
+              </div>
+            )}
+            <div className="min-w-0">
             <h3 className="font-display text-2xl text-primary">{book.title}</h3>
             <p className="text-sm text-muted-foreground">{book.author}</p>
+            </div>
           </div>
           <button
             aria-label="Fechar"
