@@ -296,6 +296,19 @@ export function BooksAdmin() {
         <button onClick={() => setImporting((v) => !v)} className={primaryBtn}>
           <Upload className="size-4" /> Importar livros (CSV)
         </button>
+        <button
+          onClick={() => exportBooks.mutate()}
+          disabled={exportBooks.isPending}
+          className={primaryBtn}
+        >
+          {exportBooks.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Download className="size-4" />
+          )}
+          Exportar CSV
+        </button>
+
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
