@@ -89,7 +89,7 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
-      <main className="mx-auto max-w-6xl px-4 pb-20 pt-28 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 pb-20 pt-36 lg:px-8">
         <h1 className="font-display text-3xl text-primary">Painel administrativo</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Catalogação, empréstimos, devoluções e cadastro de leitores.
