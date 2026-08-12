@@ -19,9 +19,26 @@ export const Route = createFileRoute("/acervo")({
       { property: "og:title", content: title },
       { property: "og:description", content: description },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://bibliotecanovomundo.lovable.app/acervo" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://bibliotecanovomundo.lovable.app/acervo" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Acervo completo",
+          description,
+          url: "https://bibliotecanovomundo.lovable.app/acervo",
+          isPartOf: { "@id": "https://bibliotecanovomundo.lovable.app/#website" },
+          about: { "@type": "Thing", name: "Livros da Biblioteca COC Novomundo" },
+        }),
+      },
+    ],
   }),
+
   component: AcervoPage,
 });
 

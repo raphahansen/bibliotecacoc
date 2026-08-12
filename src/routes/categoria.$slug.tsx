@@ -11,7 +11,7 @@ export const Route = createFileRoute("/categoria/$slug")({
     if (!category) throw notFound();
     return { category };
   },
-  head: ({ loaderData }) => {
+  head: ({ params, loaderData }) => {
     if (!loaderData) {
       return {
         meta: [
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/categoria/$slug")({
     }
     const title = `${loaderData.category.name} · Biblioteca COC Novomundo`;
     const description = `Títulos da prateleira ${loaderData.category.name} na Biblioteca COC Novomundo, com sinopses, classificação indicativa e disponibilidade para reserva.`;
+    const url = `https://bibliotecanovomundo.lovable.app/categoria/${params.slug}`;
     return {
       meta: [
         { title },
@@ -29,10 +30,26 @@ export const Route = createFileRoute("/categoria/$slug")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
         { name: "twitter:card", content: "summary_large_image" },
+      ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: loaderData.category.name,
+            description,
+            url,
+            isPartOf: { "@id": "https://bibliotecanovomundo.lovable.app/#website" },
+          }),
+        },
       ],
     };
   },
+
   errorComponent: CategoriaErro,
   notFoundComponent: CategoriaNaoEncontrada,
   component: CategoriaPage,
