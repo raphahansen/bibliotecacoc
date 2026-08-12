@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Search, Plus, Check, X, Barcode, Ban } from "lucide-react";
+import { Loader2, Search, Plus, Check, X, Barcode, Ban, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/admin/card";
 import { Pagination } from "@/components/admin/pagination";
 import { BookSelector, type SelectableBook } from "@/components/admin/book-selector";
+import { buildCsv, downloadCsvFile, fetchAllPages, timestampedName } from "@/lib/csv-export";
+
 
 
 const COPIES_PAGE_SIZE = 20;
