@@ -101,9 +101,26 @@ export function fixMojibake(text: string): string {
   });
 }
 
+/**
+ * Repete a correção para recuperar também textos que foram corrompidos mais
+ * de uma vez antes de chegarem ao sistema (ex.: HistÃƒÂ³ria → História).
+ */
+export function normalizeCsvText(value: unknown): string {
+  let normalized = value === null || value === undefined ? "" : String(value);
+  for (let pass = 0; pass < 3; pass += 1) {
+    const repaired = fixMojibake(normalized);
+    if (repaired === normalized) break;
+    normalized = repaired;
+  }
+  return normalized;
+}
+
 
 export function downloadCsv(filename: string, content: string) {
-  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
+  const bytes = new TextEncoder().encode(content);
+  const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), bytes], {
+    type: "text/csv;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
