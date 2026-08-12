@@ -1,4 +1,4 @@
-import { Clock, Mail, MapPin, Phone, Instagram, Facebook, Youtube } from "lucide-react";
+import { Clock, MapPin, Instagram } from "lucide-react";
 import logo from "@/assets/logo-novomundo-coc.png.asset.json";
 
 export function SiteFooter() {
