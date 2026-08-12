@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          actor_email: string
+          actor_id: string | null
+          actor_name: string
+          changes: Json
+          created_at: string
+          entity_id: string | null
+          entity_label: string
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string
+          actor_id?: string | null
+          actor_name?: string
+          changes?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string
+          actor_id?: string | null
+          actor_name?: string
+          changes?: Json
+          created_at?: string
+          entity_id?: string | null
+          entity_label?: string
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       book_copies: {
         Row: {
           active: boolean
@@ -516,6 +555,16 @@ export type Database = {
         }[]
       }
       sync_book_availability: { Args: { _book_id: string }; Returns: undefined }
+      write_audit: {
+        Args: {
+          _action: string
+          _changes: Json
+          _entity_id: string
+          _entity_label: string
+          _entity_type: string
+        }
+        Returns: undefined
+      }
       write_off_copy: {
         Args: { _copy_id: string; _notes?: string }
         Returns: undefined
